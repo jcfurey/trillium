@@ -12,7 +12,7 @@ RUN yarn run web:build:prod
 FROM caddy:2.5.2-alpine
 WORKDIR /src
 COPY --from=build /src/web/.webpack ./
-
+COPY extensions/registry.json extensions/registry.json
 EXPOSE 8080
 
 COPY <<EOF /entrypoint.sh
@@ -28,5 +28,6 @@ echo "\${index_html/"\$replace_pattern"/\$replace_value}" > index.html
 exec "\$@"
 EOF
 
+COPY extensions/registry.json /registry.json
 ENTRYPOINT ["/bin/sh", "/entrypoint.sh"]
 CMD ["caddy", "file-server", "--listen", ":8080"]
