@@ -57,15 +57,21 @@ export function setAppSetting(
   );
   const settingsPath = path.join(datastoreDir, SETTINGS_JSON_DATASTORE_KEY);
 
-  const existingSettings = {};
+  let existingSettings: Record<string, unknown> = {};
   try {
     fs.mkdirSync(datastoreDir, { recursive: true });
   } catch {
     // Ignore directory creation errors, including dir already exists
   }
 
+  try {
+    existingSettings = JSON.parse(fs.readFileSync(settingsPath, { encoding: "utf8" }));
+  } catch {
+    // Ignore file load or parsing errors, including settings.json not existing
+  }
+
   fs.writeFileSync(
     settingsPath,
-    JSON.stringify({ ...existingSettings, [key]: value }, undefined, 2)!,
+    JSON.stringify({ ...existingSettings, [key]: value }, undefined, 2),
   );
 }

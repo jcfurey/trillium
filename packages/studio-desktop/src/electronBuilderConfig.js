@@ -42,6 +42,11 @@ function makeElectronBuilderConfig(params) {
           mimeType: "application/octet-stream",
         },
         {
+          ext: "db3",
+          name: "ROS 2 Bag File",
+          mimeType: "application/octet-stream",
+        },
+        {
           ext: "mcap",
           name: "MCAP File",
           mimeType: "application/octet-stream",
@@ -66,6 +71,10 @@ function makeElectronBuilderConfig(params) {
           ext: "bag",
           name: "ROS Bag File",
           icon: path.join(__dirname, "../resources/icon/BagIcon.ico"),
+        },
+        {
+          ext: "db3",
+          name: "ROS 2 Bag File",
         },
         {
           ext: "mcap",
@@ -112,6 +121,14 @@ function makeElectronBuilderConfig(params) {
             LSHandlerRank: "Default",
             CFBundleTypeIconSystemGenerated: 1,
             LSItemContentTypes: ["org.ros.bag"],
+          },
+          {
+            CFBundleTypeExtensions: ["db3"],
+            CFBundleTypeName: "ROS 2 Bag File",
+            CFBundleTypeRole: "Viewer",
+            LSHandlerRank: "Default",
+            CFBundleTypeIconSystemGenerated: 1,
+            LSItemContentTypes: ["org.ros.bag2"],
           },
           {
             CFBundleTypeExtensions: ["mcap"],
@@ -164,6 +181,14 @@ function makeElectronBuilderConfig(params) {
             UTTypeIdentifier: "org.ros.bag",
             UTTypeTagSpecification: { "public.filename-extension": "bag" },
             UTTypeReferenceURL: "http://wiki.ros.org/Bags",
+          },
+          {
+            UTTypeConformsTo: ["public.data", "public.database"],
+            UTTypeDescription: "ROS 2 Bag File",
+            UTTypeIcons: { UTTypeIconText: "db3" },
+            UTTypeIdentifier: "org.ros.bag2",
+            UTTypeTagSpecification: { "public.filename-extension": "db3" },
+            UTTypeReferenceURL: "https://docs.ros.org/en/rolling/Tutorials/Beginner-CLI-Tools/Recording-And-Playing-Back-Data/Recording-And-Playing-Back-Data.html",
           },
         ],
       },

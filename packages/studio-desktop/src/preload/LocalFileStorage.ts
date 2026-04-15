@@ -84,9 +84,8 @@ export default class LocalFileStorage implements Storage {
 
   async #makeFilePath(datastore: string, key: string): Promise<string> {
     const datastoreDir = await this.#ensureDatastorePath(datastore);
-    // check that datastore matches regex [a-z]*
-    // since keys becomes paths under our datastore, we use this to sanitize
-    if (!/[a-z-]/.test(key)) {
+    // since keys become paths under our datastore, we use this to sanitize
+    if (!/^[a-z][a-z0-9\-\.]*$/.test(key)) {
       throw new Error(`key (${key}) contains invalid characters`);
     }
 
@@ -95,9 +94,8 @@ export default class LocalFileStorage implements Storage {
 
   async #ensureDatastorePath(datastore: string): Promise<string> {
     const basePath = await this.#userDataPath;
-    // check that datastore matches regex [a-z]*
     // since datastore becomes a path under our userDataPath, we use this to sanitize
-    if (!/[a-z-]/.test(datastore)) {
+    if (!/^[a-z][a-z0-9\-]*$/.test(datastore)) {
       throw new Error(`datastore (${datastore}) contains invalid characters`);
     }
 
