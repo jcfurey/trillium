@@ -86,10 +86,10 @@ export function LaunchingInDesktopScreen(): ReactElement {
             <Link
               color="primary"
               underline="hover"
-              href="https://foxglove.dev/download"
+              href="https://github.com/jcfurey/trillium/releases"
               target="_blank"
             >
-              Download Foxglove Studio
+              Download Trillium
             </Link>
           </Typography>
         </Stack>
