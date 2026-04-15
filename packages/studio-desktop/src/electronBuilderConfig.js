@@ -12,7 +12,7 @@ const path = require("path");
 function makeElectronBuilderConfig(params) {
   return {
     electronVersion,
-    appId: "dev.foxglove.studio",
+    appId: "dev.trillium.app",
     npmRebuild: false,
     asar: true,
     directories: {
@@ -53,7 +53,7 @@ function makeElectronBuilderConfig(params) {
         },
         {
           ext: "foxe",
-          name: "Foxglove Studio Extension",
+          name: "Trillium Extension",
           mimeType: "application/zip",
         },
       ],
@@ -83,7 +83,7 @@ function makeElectronBuilderConfig(params) {
         },
         {
           ext: "foxe",
-          name: "Foxglove Studio Extension",
+          name: "Trillium Extension",
           mimeType: "application/zip",
         },
       ],
@@ -142,7 +142,7 @@ function makeElectronBuilderConfig(params) {
           {
             CFBundleTypeExtensions: ["foxe"],
             CFBundleTypeIconFile: "FoxeIcon",
-            CFBundleTypeName: "Foxglove Studio Extension File",
+            CFBundleTypeName: "Trillium Extension File",
             CFBundleTypeRole: "Viewer",
             LSHandlerRank: "Owner",
             CFBundleTypeIconSystemGenerated: 1,
@@ -166,7 +166,7 @@ function makeElectronBuilderConfig(params) {
           },
           {
             UTTypeConformsTo: ["public.data", "public.archive", "public.zip-archive"],
-            UTTypeDescription: "Foxglove Studio Extension File",
+            UTTypeDescription: "Trillium Extension File",
             UTTypeIcons: { UTTypeIconText: "foxe" },
             UTTypeIdentifier: "dev.foxglove.extension",
             UTTypeTagSpecification: { "public.filename-extension": "foxe" },
