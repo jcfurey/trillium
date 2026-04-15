@@ -15,33 +15,7 @@ type VersionResponse = {
 };
 
 export function UpdateChecker(): JSX.Element {
-  const { enqueueSnackbar } = useSnackbar();
-
-  useEffect(() => {
-    if (!navigator.onLine || !FOXGLOVE_STUDIO_VERSION) {
-      return;
-    }
-
-    const abort = new AbortController();
-
-    fetch(`https://api.foxglove.dev/v1/studio-update?version=${FOXGLOVE_STUDIO_VERSION}`, {
-      credentials: "omit",
-      signal: abort.signal,
-    })
-      .then(async (res) => {
-        const { message } = (await res.json()) as VersionResponse;
-        if (message) {
-          enqueueSnackbar(message);
-        }
-      })
-      .catch((err) => {
-        log.error(err);
-      });
-
-    return () => {
-      abort.abort();
-    };
-  }, [enqueueSnackbar]);
-
+  // Update checking against the Foxglove API is disabled for this fork.
+  // To re-enable, point to your own update-check endpoint.
   return <></>;
 }

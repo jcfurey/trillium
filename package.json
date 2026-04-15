@@ -17,7 +17,7 @@
   },
   "homepage": "https://github.com/pdragy/trillium.git/",
   "engines": {
-    "node": ">=16"
+    "node": ">=20"
   },
   "scripts": {
     "clean": "tsc --build --clean packages/**/tsconfig.json && rimraf .webpack */.webpack dist storybook-screenshots storybook-static",
