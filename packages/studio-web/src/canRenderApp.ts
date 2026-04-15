@@ -16,15 +16,13 @@ function supportsClassStaticInitialization() {
   }
 }
 
-const supportsOffscreenCanvas =
-  typeof HTMLCanvasElement.prototype.transferControlToOffscreen === "function";
-
 /** Returns true if JS syntax and APIs required for rendering the rest of the app are supported. */
 export function canRenderApp(): boolean {
+  // Note: OffscreenCanvas is NOT required here. It is only used by the Plot panel
+  // which has its own runtime feature detection and graceful fallback.
   return (
     typeof BigInt64Array === "function" &&
     typeof BigUint64Array === "function" &&
-    supportsClassStaticInitialization() &&
-    supportsOffscreenCanvas
+    supportsClassStaticInitialization()
   );
 }
