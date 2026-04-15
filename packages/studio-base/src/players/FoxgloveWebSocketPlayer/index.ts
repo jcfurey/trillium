@@ -1329,11 +1329,26 @@ export default class FoxgloveWebSocketPlayer implements Player {
     const maybeRos = ["ros1", "ros2"].includes(this.#profile ?? "");
     for (const [name, types] of datatypes) {
       const knownTypes = this.#datatypes.get(name);
-      if (knownTypes && !isMsgDefEqual(types, knownTypes)) {
-        this.#problems.addProblem(`schema-changed-${name}`, {
-          message: `Definition of schema '${name}' has changed during the server's runtime`,
-          severity: "error",
-        });
+      if (knownTypes) {
+        // Normalize nested type references to full form (pkg/msg/Type) before comparing.
+        // Preloaded common ROS types (ros2humble) use short form (pkg/Type) in their definitions
+        // while foxglove-bridge sends full-form schemas, producing false-positive conflicts.
+        const normalizedTypes = maybeRos ? normalizeDefinitionTypeNames(types) : types;
+        const normalizedKnown = maybeRos ? normalizeDefinitionTypeNames(knownTypes) : knownTypes;
+        if (!isMsgDefEqual(normalizedTypes, normalizedKnown)) {
+          // Preloaded ros2humble common types are stale relative to newer ROS distros (Jazzy adds
+          // fields to visualization_msgs/Marker, diagnostic_msgs/DiagnosticStatus, etc.).
+          // Always let incoming schemas win — the bridge is authoritative. Suppress the warning
+          // since it is never actionable: users cannot resolve preload/distro mismatches.
+          if (updatedDatatypes == undefined) {
+            updatedDatatypes = new Map(this.#datatypes);
+          }
+          updatedDatatypes.set(name, types);
+          const fullTypeName = dataTypeToFullName(name);
+          if (maybeRos && fullTypeName !== name) {
+            updatedDatatypes.set(fullTypeName, normalizeDefinitionTypeNames(types));
+          }
+        }
       } else {
         if (updatedDatatypes == undefined) {
           updatedDatatypes = new Map(this.#datatypes);
@@ -1342,10 +1357,9 @@ export default class FoxgloveWebSocketPlayer implements Player {
 
         const fullTypeName = dataTypeToFullName(name);
         if (maybeRos && fullTypeName !== name) {
-          updatedDatatypes.set(fullTypeName, {
-            ...types,
-            name: types.name ? dataTypeToFullName(types.name) : undefined,
-          });
+          // Normalize nested type references so the mirror's definitions match
+          // full-form schemas sent by foxglove-bridge.
+          updatedDatatypes.set(fullTypeName, normalizeDefinitionTypeNames(types));
         }
       }
     }
@@ -1361,6 +1375,21 @@ function dataTypeToFullName(dataType: string): string {
     return `${parts[0]}/msg/${parts[1]}`;
   }
   return dataType;
+}
+
+// Normalize all nested type references in a message definition to full form (pkg/msg/Type).
+// Preloaded common ROS types use short form (pkg/Type), while foxglove-bridge sends full-form
+// schemas. Without normalization, isMsgDefEqual produces false-positive schema-changed errors.
+function normalizeDefinitionTypeNames(msgDef: MessageDefinition): MessageDefinition {
+  type Field = MessageDefinition["definitions"][number];
+  return {
+    ...msgDef,
+    name: msgDef.name ? dataTypeToFullName(msgDef.name) : undefined,
+    definitions: msgDef.definitions.map((field: Field) => ({
+      ...field,
+      type: dataTypeToFullName(field.type),
+    })),
+  };
 }
 
 function statusLevelToProblemSeverity(level: StatusLevel): PlayerProblem["severity"] {
