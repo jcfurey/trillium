@@ -131,6 +131,7 @@ export default class FoxgloveWebSocketPlayer implements Player {
   #channelsById = new Map<ChannelId, ResolvedChannel>();
   #unsupportedChannelIds = new Set<ChannelId>();
   #recentlyCanceledSubscriptions = new Set<SubscriptionId>();
+  #recentlyCanceledTimers = new Set<ReturnType<typeof setTimeout>>();
   #parameters = new Map<string, ParameterValue>();
   #getParameterInterval?: ReturnType<typeof setInterval>;
   #openTimeout?: ReturnType<typeof setInterval>;
@@ -523,6 +524,13 @@ export default class FoxgloveWebSocketPlayer implements Player {
         const receiveTime = this.#getCurrentTime();
         const topic = chanInfo.channel.topic;
         const deserializedMessage = chanInfo.parsedChannel.deserialize(data);
+        if (deserializedMessage == undefined) {
+          this.#problems.addProblem(`msgError:${topic}`, {
+            severity: "warn",
+            message: `Failed to deserialize message on topic ${topic}`,
+          });
+          return;
+        }
 
         // Lookup the size estimate for this topic or compute it if not found in the cache.
         let msgSizeEstimate = this.#messageSizeEstimateByTopic[topic];
@@ -813,7 +821,7 @@ export default class FoxgloveWebSocketPlayer implements Player {
         );
       }
       responseCallback(response);
-      this.#serviceResponseCbs.delete(response.requestId);
+      this.#fetchAssetRequests.delete(response.requestId);
     });
   };
 
@@ -923,6 +931,11 @@ export default class FoxgloveWebSocketPlayer implements Player {
       clearInterval(this.#getParameterInterval);
       this.#getParameterInterval = undefined;
     }
+    for (const timer of this.#recentlyCanceledTimers) {
+      clearTimeout(timer);
+    }
+    this.#recentlyCanceledTimers.clear();
+    this.#recentlyCanceledSubscriptions.clear();
   }
 
   public setSubscriptions(subscriptions: SubscribePayload[]): void {
@@ -952,10 +965,11 @@ export default class FoxgloveWebSocketPlayer implements Player {
         // Reset the message count for this topic
         topicStats.delete(topic);
 
-        setTimeout(
-          () => this.#recentlyCanceledSubscriptions.delete(subId),
-          SUBSCRIPTION_WARNING_SUPPRESSION_MS,
-        );
+        const timer = setTimeout(() => {
+          this.#recentlyCanceledSubscriptions.delete(subId);
+          this.#recentlyCanceledTimers.delete(timer);
+        }, SUBSCRIPTION_WARNING_SUPPRESSION_MS);
+        this.#recentlyCanceledTimers.add(timer);
       }
     }
     this.#topicsStats = topicStats;
