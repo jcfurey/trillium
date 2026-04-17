@@ -97,7 +97,7 @@ function newStudioWindow(deepLinks: string[] = [], reloadMainWindow: () => void)
   }
 
   const browserWindow = new BrowserWindow(windowOptions);
-  nativeTheme.on("updated", () => {
+  const onThemeUpdated = () => {
     if (isWindows) {
       // Although the TS types say this function is always available, it is undefined on non-Windows platforms
       browserWindow.setTitleBarOverlay(getTitleBarOverlayOptions());
@@ -106,6 +106,10 @@ function newStudioWindow(deepLinks: string[] = [], reloadMainWindow: () => void)
     if (bgColor != undefined) {
       browserWindow.setBackgroundColor(bgColor);
     }
+  };
+  nativeTheme.on("updated", onThemeUpdated);
+  browserWindow.once("closed", () => {
+    nativeTheme.off("updated", onThemeUpdated);
   });
 
   // Forward full screen events to the renderer
@@ -370,12 +374,16 @@ class StudioWindow {
     this.#browserWindow = newWindow;
     this.#menu = newMenu;
 
-    i18n.on("languageChanged", () => {
+    const onLanguageChanged = () => {
       const isAppMenu = Menu.getApplicationMenu() === this.#menu;
       this.#menu = buildMenu(this.#browserWindow);
       if (isAppMenu) {
         Menu.setApplicationMenu(this.#menu);
       }
+    };
+    i18n.on("languageChanged", onLanguageChanged);
+    this.#browserWindow.once("closed", () => {
+      i18n.off("languageChanged", onLanguageChanged);
     });
   }
 

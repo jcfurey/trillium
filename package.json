@@ -17,7 +17,7 @@
   },
   "homepage": "https://github.com/pdragy/trillium.git/",
   "engines": {
-    "node": ">=16"
+    "node": ">=20"
   },
   "scripts": {
     "clean": "tsc --build --clean packages/**/tsconfig.json && rimraf .webpack */.webpack dist storybook-screenshots storybook-static",
@@ -94,7 +94,7 @@
     "babel-plugin-transform-import-meta": "2.2.1",
     "cross-env": "7.0.3",
     "depcheck": "1.4.7",
-    "electron": "25.9.8",
+    "electron": "28.3.3",
     "electron-builder": "24.13.3",
     "eslint": "8.50.0",
     "eslint-config-prettier": "9.1.0",
@@ -116,12 +116,12 @@
     "prettier": "3.0.3",
     "rimraf": "5.0.10",
     "semver": "7.5.4",
-    "storybook": "7.6.20",
+    "storybook": "7.6.21",
     "ts-node": "10.9.2",
     "ts-unused-exports": "10.0.1",
     "tslib": "2.6.2",
     "typescript": "5.2.2",
-    "webpack": "5.88.2",
+    "webpack": "5.102.1",
     "webpack-cli": "6.0.1",
     "webpack-dev-server": "5.2.2",
     "webpack-hot-middleware": "2.26.1"

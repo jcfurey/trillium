@@ -66,10 +66,10 @@ export const webpackRendererConfig =
           templateContent: `
   <!doctype html>
   <html>
-    <head><meta charset="utf-8"></head>
-    <script>
-      global = globalThis;
-    </script>
+    <head>
+      <meta charset="utf-8">
+      <script>global = globalThis;</script>
+    </head>
     <style>
       html, body {
         background-color: ${palette.light.background?.default};

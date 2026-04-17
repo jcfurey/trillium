@@ -993,6 +993,9 @@ export class Renderer extends EventEmitter<RendererEvents> implements IRenderer 
 
   public addCoordinateFrame(frameId: string): void {
     const normalizedFrameId = this.normalizeFrameId(frameId);
+    if (normalizedFrameId.length === 0) {
+      return;
+    }
     if (!this.transformTree.hasFrame(normalizedFrameId)) {
       this.transformTree.getOrCreateFrame(normalizedFrameId);
       this.coordinateFrameList = this.transformTree.frameList();
@@ -1014,7 +1017,7 @@ export class Renderer extends EventEmitter<RendererEvents> implements IRenderer 
       this.settings.errors.add(
         ["transforms"],
         ADD_TRANSFORM_ERROR,
-        `Error adding transform for frame ${normalizedChildId}: ${err.message}`,
+        `Error adding transform for frame ${normalizedChildId}: ${err instanceof Error ? err.message : String(err)}`,
       );
     }
   }
