@@ -10,7 +10,8 @@ import ExtensionMarketplaceContext, {
 } from "@foxglove/studio-base/context/ExtensionMarketplaceContext";
 
 const MARKETPLACE_URL =
-  "http://localhost:8080/extensions/registry.json"
+  "http://localhost/extensions/registry.json"
+  // "http://localhost:8080/extensions/registry.json"
   //"https://raw.githubusercontent.com/pdragy/trillium-extensions/refs/heads/main/extensions.json";
   //"https://raw.githubusercontent.com/foxglove/studio-extension-marketplace/main/extensions.json";
 
