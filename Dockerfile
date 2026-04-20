@@ -12,22 +12,8 @@ RUN yarn run web:build:prod
 FROM caddy:2.5.2-alpine
 WORKDIR /src
 COPY --from=build /src/web/.webpack ./
-COPY extensions/registry.json extensions/registry.json
+COPY extensions/ extensions/
 EXPOSE 8080
-
-COPY <<EOF /etc/caddy/Caddyfile
-:8080 {
-	root * /src
-	file_server
-	header {
-		Cross-Origin-Opener-Policy "same-origin"
-		Cross-Origin-Embedder-Policy "credentialless"
-		X-Frame-Options "DENY"
-		X-Content-Type-Options "nosniff"
-		Referrer-Policy "origin"
-	}
-}
-EOF
 
 COPY <<EOF /entrypoint.sh
 # Optionally override the default layout with one provided via bind mount
@@ -44,4 +30,4 @@ EOF
 
 COPY extensions/registry.json /registry.json
 ENTRYPOINT ["/bin/sh", "/entrypoint.sh"]
-CMD ["caddy", "run", "--config", "/etc/caddy/Caddyfile"]
+CMD ["caddy", "file-server", "--listen", ":8080"]
