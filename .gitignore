@@ -16,6 +16,3 @@ coverage/
 !.yarn/plugins
 !.yarn/sdks
 .pnp.*
-
-# Extensions
-*.foxe
