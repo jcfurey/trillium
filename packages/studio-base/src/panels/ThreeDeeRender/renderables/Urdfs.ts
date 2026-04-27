@@ -27,6 +27,7 @@ import { RenderableCylinder } from "./markers/RenderableCylinder";
 import { RenderableMeshResource } from "./markers/RenderableMeshResource";
 import { RenderableSphere } from "./markers/RenderableSphere";
 import { missingTransformMessage, MISSING_TRANSFORM } from "./transforms";
+import { isValidMeshUrl } from "../ModelCache";
 import type { AnyRendererSubscription, IRenderer } from "../IRenderer";
 import { BaseUserData, Renderable } from "../Renderable";
 import { PartialMessageEvent, SceneExtension, onlyLastByTopicMessage } from "../SceneExtension";
@@ -1164,16 +1165,10 @@ function createMeshMarker(
   };
 }
 
-const VALID_PROTOCOLS = ["https:", "http:", "file:", "data:", "package:"];
-
-function isValidUrl(str: string): boolean {
-  try {
-    const url = new URL(str);
-    return VALID_PROTOCOLS.includes(url.protocol);
-  } catch (_err) {
-    return false;
-  }
-}
+// URDF source URLs share the same protocol allowlist as mesh URLs (defined in ModelCache so
+// every mesh-loading entry point uses the same gate). See the comment on VALID_MESH_PROTOCOLS
+// for the rationale on dropping file:.
+const isValidUrl = isValidMeshUrl;
 
 function urdfChildren(
   transforms: TransformData[] | undefined,

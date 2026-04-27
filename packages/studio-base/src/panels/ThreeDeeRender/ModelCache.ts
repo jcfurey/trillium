@@ -39,6 +39,22 @@ type ErrorCallback = (err: Error) => void;
 
 const DEFAULT_COLOR = new THREE.Color(0x248eff);
 
+// Protocols allowed for loading mesh resources (URDF mesh_resource, Marker.mesh_resource,
+// and textures referenced from inside a model). file: was historically permitted but is a
+// local-disclosure foot-gun: any topic publisher can put `mesh_resource: "file:///etc/shadow"`
+// in a marker, and even though browser/Electron same-origin enforcement usually blocks the
+// fetch in production, the URL still gets attempted, and dev builds (webSecurity: false) don't
+// block at all. http: stays allowed for backward compat with non-TLS hosting setups.
+export const VALID_MESH_PROTOCOLS = ["https:", "http:", "data:", "package:"];
+
+export function isValidMeshUrl(str: string): boolean {
+  try {
+    return VALID_MESH_PROTOCOLS.includes(new URL(str).protocol);
+  } catch {
+    return false;
+  }
+}
+
 const GLTF_MIME_TYPES = ["model/gltf", "model/gltf-binary", "model/gltf+json"];
 // Sourced from <https://github.com/Ultimaker/Cura/issues/4141>
 const STL_MIME_TYPES = ["model/stl", "model/x.stl-ascii", "model/x.stl-binary", "application/sla"];
@@ -63,6 +79,16 @@ export class ModelCache {
     opts: LoadModelOptions,
     reportError: ErrorCallback,
   ): Promise<LoadedModel | undefined> {
+    if (!isValidMeshUrl(url)) {
+      reportError(
+        new Error(
+          `Refusing to load mesh from "${url}": protocol not in allowlist ` +
+            `(${VALID_MESH_PROTOCOLS.join(", ")})`,
+        ),
+      );
+      return undefined;
+    }
+
     let promise = this.#models.get(url);
     if (promise) {
       return await promise;
@@ -215,6 +241,14 @@ export class ModelCache {
 
       try {
         const textureUrl = new URL(node.textContent, baseUrl(url)).toString();
+        // A malicious .dae could reference any URL via <init_from>. Constrain to the same
+        // protocol allowlist used at the model entry point so a textures-pretending-to-be-mesh
+        // attack can't exfiltrate a file:// path or call out to an arbitrary host.
+        if (!isValidMeshUrl(textureUrl)) {
+          throw new Error(
+            `Texture protocol not in allowlist (${VALID_MESH_PROTOCOLS.join(", ")})`,
+          );
+        }
         if (this.#colladaTextureObjectUrls.has(textureUrl)) {
           continue;
         }
