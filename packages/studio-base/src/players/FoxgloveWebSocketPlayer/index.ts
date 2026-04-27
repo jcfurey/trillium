@@ -66,6 +66,10 @@ const GET_ALL_PARAMS_REQUEST_ID = "get-all-params";
 const GET_ALL_PARAMS_PERIOD_MS = 15000;
 const ROS_ENCODINGS = ["ros1", "cdr"];
 const SUPPORTED_PUBLICATION_ENCODINGS = ["json", ...ROS_ENCODINGS];
+// JSON is the fallback when the server doesn't support cdr/ros1. Be aware that JS Number can
+// only represent integers up to 2^53 - 1 exactly — a custom message with a uint64 field
+// (sequence numbers, monotonic IDs) published from a panel will silently lose precision when
+// serialized via JSON. ROS 2 builtin_interfaces/Time is sec+nsec int32s, so timestamps are safe.
 const FALLBACK_PUBLICATION_ENCODING = "json";
 const SUPPORTED_SERVICE_ENCODINGS = ["json", ...ROS_ENCODINGS];
 
