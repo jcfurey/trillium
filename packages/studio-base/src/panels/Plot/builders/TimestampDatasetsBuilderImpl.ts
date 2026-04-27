@@ -146,11 +146,14 @@ export class TimestampDatasetsBuilderImpl {
           continue;
         }
 
-        if (!isNaN(item.x)) {
+        // Use Number.isFinite, not !isNaN: isNaN(Infinity) === false, so Infinity values would
+        // pass through extendBounds1D (Math.max/min) and pin bounds.max to Infinity. Chart.js's
+        // scale calculation then renders nothing or hangs. Treat Infinity the same as NaN.
+        if (Number.isFinite(item.x)) {
           extendBounds1D(xBounds, item.x);
         }
 
-        if (!isNaN(item.y)) {
+        if (Number.isFinite(item.y)) {
           extendBounds1D(yBounds, item.y);
         }
 
