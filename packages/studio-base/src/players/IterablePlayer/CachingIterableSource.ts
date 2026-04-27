@@ -256,6 +256,15 @@ class CachingIterableSource<MessageType = unknown>
 
       const pendingIterResults: [bigint, IteratorResult<MessageType>][] = [];
 
+      // Set when the source yields a message whose receiveTime is meaningfully earlier than the
+      // last forward-time we tracked (sim-time reset, multi-clock recordings spliced together,
+      // upstream out-of-order delivery). The cache is indexed on a monotonically increasing
+      // block.start; we can't safely insert a backwards-time message into the existing block, so
+      // we stop caching for the remainder of this iteration and let messages pass through to the
+      // consumer. Subsequent reads at the regressed time range will be re-fetched from the
+      // source (slower but correct) instead of being silently held forever in pendingIterResults.
+      let cachingDisabledForBackwardsTime = false;
+
       for await (const iterResult of sourceMessageIterator) {
         // if there is no block, we make a new block
         if (!block) {
@@ -309,6 +318,32 @@ class CachingIterableSource<MessageType = unknown>
 
             lastTime = receiveTimeNs;
             this.#recomputeLoadedRangeCache();
+          } else if (
+            !cachingDisabledForBackwardsTime &&
+            receiveTimeNs < lastTime &&
+            block.items.length + pendingIterResults.length > 0
+          ) {
+            // Backwards time jump on a non-empty block. Flush whatever we already have at
+            // lastTime (it correctly belongs to the time range we accumulated) and stop adding
+            // to the cache for the rest of this iterator. The block stays valid for the
+            // forward-time window we already captured; the regressed messages flow through to
+            // the consumer below but are not stored.
+            log.warn(
+              `CachingIterableSource: source yielded backwards-time message ` +
+                `(receiveTime=${receiveTimeNs}ns < lastTime=${lastTime}ns). ` +
+                `Disabling cache for the rest of this iteration to keep block index consistent.`,
+            );
+            for (const pendingIterResult of pendingIterResults) {
+              const item = pendingIterResult[1];
+              const pendingSizeInBytes =
+                item.type === "message-event" ? item.msgEvent.sizeInBytes : 0;
+              block.items.push(pendingIterResult);
+              block.size += pendingSizeInBytes;
+            }
+            pendingIterResults.length = 0;
+            block.lastAccess = Date.now();
+            this.#recomputeLoadedRangeCache();
+            cachingDisabledForBackwardsTime = true;
           }
         }
 
@@ -332,30 +367,45 @@ class CachingIterableSource<MessageType = unknown>
           this.#recomputeLoadedRangeCache();
         }
 
-        // As we add items to pending we also consider them as part of the total size
-        this.#totalSizeBytes += sizeInBytes;
-
-        // Store the latest message in pending results and flush to the block when time moves forward
-        pendingIterResults.push([lastTime, iterResult]);
+        // Store the latest message in pending results and flush to the block when time moves
+        // forward. Skip when caching is disabled (backwards-time jump): the consumer still gets
+        // the message via yield below, but we don't track its bytes against the cache budget.
+        if (!cachingDisabledForBackwardsTime) {
+          this.#totalSizeBytes += sizeInBytes;
+          pendingIterResults.push([lastTime, iterResult]);
+        }
 
         yield iterResult;
       }
 
       // We've finished reading our source to the end, close out the block
       if (block) {
-        block.end = sourceReadEnd;
+        // If caching was disabled mid-iteration because of a backwards-time jump, we already
+        // flushed pending and stopped accumulating. The block legitimately covers only up to
+        // lastTime (the latest forward time we observed); extending block.end to sourceReadEnd
+        // would falsely claim coverage of the regressed time range and prevent re-fetching it
+        // from the source on the next read.
+        if (cachingDisabledForBackwardsTime) {
+          // toNanoSec → Time conversion would round-trip; lastTime came from a real receiveTime
+          // so we can reconstruct it via the same subtract-1ns trick used in the forward path.
+          const lastSec = Number(lastTime / 1_000_000_000n);
+          const lastNsec = Number(lastTime % 1_000_000_000n);
+          block.end = subtract({ sec: lastSec, nsec: lastNsec }, { sec: 0, nsec: 1 });
+        } else {
+          block.end = sourceReadEnd;
+
+          // write any pending messages to the block
+          for (const pendingIterResult of pendingIterResults) {
+            const item = pendingIterResult[1];
+            const pendingSizeInBytes =
+              item.type === "message-event" ? item.msgEvent.sizeInBytes : 0;
+            block.items.push(pendingIterResult);
+            block.size += pendingSizeInBytes;
+          }
+        }
 
         // update the last time this block was accessed
         block.lastAccess = Date.now();
-
-        // write any pending messages to the block
-        for (const pendingIterResult of pendingIterResults) {
-          const item = pendingIterResult[1];
-          const pendingSizeInBytes = item.type === "message-event" ? item.msgEvent.sizeInBytes : 0;
-          block.items.push(pendingIterResult);
-          block.size += pendingSizeInBytes;
-        }
-
         this.#recomputeLoadedRangeCache();
       } else {
         // We don't have a block after finishing our source. This can happen if the last
