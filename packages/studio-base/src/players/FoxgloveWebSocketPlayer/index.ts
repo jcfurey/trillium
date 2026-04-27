@@ -563,14 +563,6 @@ export default class FoxgloveWebSocketPlayer implements Player {
         });
         this.#parsedMessagesBytes += sizeInBytes;
         if (this.#parsedMessagesBytes > CURRENT_FRAME_MAXIMUM_SIZE_BYTES) {
-          this.#problems.addProblem(`webSocketPlayer:parsedMessageCacheFull`, {
-            severity: "error",
-            message: `WebSocketPlayer maximum frame size (${(
-              CURRENT_FRAME_MAXIMUM_SIZE_BYTES / 1_000_000
-            ).toFixed(
-              2,
-            )}MB) reached. Dropping old messages. This accumulation can occur if the browser tab has been inactive.`,
-          });
           // Amortize cost of dropping messages by dropping parsedMessages size to
           // 80% so that it doesn't happen for every message after reaching the limit
           const evictUntilSize = 0.8 * CURRENT_FRAME_MAXIMUM_SIZE_BYTES;
@@ -580,8 +572,35 @@ export default class FoxgloveWebSocketPlayer implements Player {
             droppedBytes += this.#parsedMessages[indexToCutBefore]!.sizeInBytes;
             indexToCutBefore++;
           }
+          // Capture the dropped time range before splicing so the user can correlate the gap
+          // with whatever they were watching. Without this, eviction looks like silent
+          // playback continuity in the UI.
+          const firstDropped = this.#parsedMessages[0];
+          const lastDropped = this.#parsedMessages[indexToCutBefore - 1];
           this.#parsedMessages.splice(0, indexToCutBefore);
           this.#parsedMessagesBytes -= droppedBytes;
+          const fromTime =
+            firstDropped != undefined
+              ? `${firstDropped.receiveTime.sec}.${String(firstDropped.receiveTime.nsec).padStart(
+                  9,
+                  "0",
+                )}`
+              : "?";
+          const toTime =
+            lastDropped != undefined
+              ? `${lastDropped.receiveTime.sec}.${String(lastDropped.receiveTime.nsec).padStart(
+                  9,
+                  "0",
+                )}`
+              : "?";
+          this.#problems.addProblem(`webSocketPlayer:parsedMessageCacheFull`, {
+            severity: "error",
+            message: `WebSocketPlayer maximum frame size (${(
+              CURRENT_FRAME_MAXIMUM_SIZE_BYTES / 1_000_000
+            ).toFixed(2)}MB) reached. Dropped ${indexToCutBefore} message${
+              indexToCutBefore === 1 ? "" : "s"
+            } (~${(droppedBytes / 1_000_000).toFixed(2)}MB) covering receive-time ${fromTime} → ${toTime}. This accumulation can occur if the browser tab has been inactive.`,
+          });
         }
 
         // Update the message count for this topic
