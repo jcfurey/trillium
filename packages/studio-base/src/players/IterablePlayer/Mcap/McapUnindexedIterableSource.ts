@@ -31,6 +31,14 @@ import { RosDatatypes } from "@foxglove/studio-base/types/RosDatatypes";
 
 const DURATION_YEAR_SEC = 365 * 24 * 60 * 60;
 
+// Cap the file size accepted by the unindexed reader. The previous 1 GB limit only bounded the
+// on-disk file; this provider then decompresses every chunk and stages all messages in
+// #msgEventsByChannel, so a 1 GB file with 5–10× chunked-LZ4 compression produced a multi-GB
+// working set. 256 MB keeps the worst-case decompressed footprint inside a few GB on heavy
+// compression and a few hundred MB on typical bags. Files larger than this should be reindexed
+// (e.g. `mcap recover`) so the indexed reader can stream messages instead of staging them.
+const MAX_UNINDEXED_FILE_BYTES = 256 * 1024 * 1024;
+
 type Options = { size: number; stream: ReadableStream<Uint8Array> };
 
 /** Only efficient for small files */
@@ -47,10 +55,15 @@ export class McapUnindexedIterableSource implements ISerializedIterableSource {
   }
 
   public async initialize(): Promise<Initalization> {
-    if (this.#options.size > 1024 * 1024 * 1024) {
-      // This provider uses a simple approach of loading everything into memory up front, so we
-      // can't handle large files
-      throw new Error("Unable to open unindexed MCAP file; unindexed files are limited to 1GB");
+    if (this.#options.size > MAX_UNINDEXED_FILE_BYTES) {
+      // This provider loads everything into memory up front. The cap here is the file size, but
+      // the actual working set after decompression can be 5–10× larger for chunked LZ4/zstd —
+      // hence the relatively conservative ceiling.
+      throw new Error(
+        `Unable to open unindexed MCAP file: unindexed files are limited to ` +
+          `${(MAX_UNINDEXED_FILE_BYTES / 1024 / 1024).toFixed(0)} MB. ` +
+          `Reindex the file (e.g. \`mcap recover\`) so it can be streamed instead of staged in memory.`,
+      );
     }
     const decompressHandlers = await loadDecompressHandlers();
 
