@@ -120,6 +120,25 @@ export async function findRosPackage(
 const NET_ERROR_FAILED = -2;
 
 /**
+ * Resolve a relative URL path against a package root, refusing any input that escapes the root.
+ *
+ * URL.pathname for `package://pkg/foo/../../etc/passwd` keeps the `..` segments verbatim;
+ * `path.join(pkgRoot, "foo", "..", "..", "etc", "passwd")` then normalizes them into a path
+ * outside pkgRoot (arbitrary-file-read for whatever the renderer fetches via `package://`,
+ * including URDF/mesh refs and layout assets — both attacker-controlled when a user opens an
+ * untrusted file). Resolve and bound-check before returning.
+ */
+function resolvePackageResourcePath(pkgRoot: string, urlPathname: string): string {
+  const resolvedRoot = path.resolve(pkgRoot);
+  const rootWithSep = resolvedRoot.endsWith(path.sep) ? resolvedRoot : resolvedRoot + path.sep;
+  const resolved = path.resolve(resolvedRoot, ...urlPathname.split("/"));
+  if (resolved !== resolvedRoot && !resolved.startsWith(rootWithSep)) {
+    throw new Error(`Resource path '${urlPathname}' escapes ROS package root`);
+  }
+  return resolved;
+}
+
+/**
  * Register handlers for package: protocol
  *
  * The package: protocol handler attempts to load resources using ROS_PACKAGE_PATH lookup semantics.
@@ -151,7 +170,7 @@ export function registerRosPackageProtocolHandlers(): void {
         );
       }
 
-      const resolvedResourcePath = path.join(pkgRoot, ...relPath.split("/"));
+      const resolvedResourcePath = resolvePackageResourcePath(pkgRoot, relPath);
       log.info(`Resolved: ${resolvedResourcePath}`);
       callback({ path: resolvedResourcePath });
     } catch (err) {
@@ -190,7 +209,7 @@ export function registerRosPackageProtocolHandlers(): void {
         );
       }
 
-      const resolvedResourcePath = path.join(pkgRoot, ...relPath.split("/"));
+      const resolvedResourcePath = resolvePackageResourcePath(pkgRoot, relPath);
 
       const buf = await fs.readFile(resolvedResourcePath);
       const [ifd] = UTIF.decode(buf);
