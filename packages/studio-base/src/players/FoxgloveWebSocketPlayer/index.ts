@@ -1421,10 +1421,14 @@ export default class FoxgloveWebSocketPlayer implements Player {
         const normalizedTypes = maybeRos ? normalizeDefinitionTypeNames(types) : types;
         const normalizedKnown = maybeRos ? normalizeDefinitionTypeNames(knownTypes) : knownTypes;
         if (!isMsgDefEqual(normalizedTypes, normalizedKnown)) {
-          // Preloaded ros2humble common types are stale relative to newer ROS distros (Jazzy adds
-          // fields to visualization_msgs/Marker, diagnostic_msgs/DiagnosticStatus, etc.).
-          // Always let incoming schemas win — the bridge is authoritative. Suppress the warning
-          // since it is never actionable: users cannot resolve preload/distro mismatches.
+          // Normalized forms still differ — this is a real schema change, not a short/full
+          // type-name mismatch. A node likely restarted with an incompatible message
+          // definition; deserialization for already-running subscribers may now corrupt data.
+          // Warn the user and let the bridge's schema win going forward.
+          this.#problems.addProblem(`schema-changed-${name}`, {
+            message: `Definition of schema '${name}' has changed during the server's runtime`,
+            severity: "warn",
+          });
           if (updatedDatatypes == undefined) {
             updatedDatatypes = new Map(this.#datatypes);
           }
