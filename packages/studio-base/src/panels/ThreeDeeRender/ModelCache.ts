@@ -94,9 +94,13 @@ export class ModelCache {
       return await promise;
     }
 
+    // Drop the cache entry on failure so the next load() call retries instead of returning the
+    // cached `undefined` forever. A transient network blip would otherwise permanently break a
+    // mesh URL until the panel was reloaded.
     promise = this.#loadModel(url, opts, reportError)
       .then((model) => addEdges(model, this.#edgeMaterial))
       .catch(async (err) => {
+        this.#models.delete(url);
         reportError(err as Error);
         return undefined;
       });
