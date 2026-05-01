@@ -46,8 +46,7 @@ release_app:
     - RELEASE_NAME="Release $(date "+%Y-%m-%d %H:%M:%S")"
     - echo "Creating $RELEASE_TAG"
     - glab auth login --job-token "$CI_JOB_TOKEN" --hostname "$CI_SERVER_HOST"
-    - glab release create "$RELEASE_TAG" \
-        --title "$RELEASE_NAME" \
-        --notes "Automated release created at $(date "+%Y-%m-%d %H:%M:%S")"
+    - glab config set telemetry false
+    - glab release create "$RELEASE_TAG" --title "$RELEASE_NAME" --notes "Automated release created at $(date "+%Y-%m-%d %H:%M:%S")"
   rules:
     - if: $CI_COMMIT_BRANCH == "main"
