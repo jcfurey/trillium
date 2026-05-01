@@ -1,10 +1,13 @@
 image: node:22
+
 stages:
   - install
   - build
+  - release
+
 variables:
   YARN_ENABLE_IMMUTABLE_INSTALLS: false
-  
+
 cache:
   paths:
     - node_modules/
@@ -26,3 +29,22 @@ build_app:
   stage: build
   script:
     - yarn run web:build:prod
+  artifacts:
+    paths:
+      - src/web/
+    expire_in: 1 hour
+
+release_app:
+  stage: release
+  needs:
+    - job: build_app
+      artifacts: true
+  script:
+    - export RELEASE_TAG="release-$(date +%Y%m%d%H%M%S)"
+    - echo "Creating release $RELEASE_TAG"
+  release:
+    tag_name: "release-$(date +%Y%m%d%H%M%S)"
+    name: "Release $(date +%Y-%m-%d\ %H:%M:%S)"
+    description: "Automated release created at $(date +%Y-%m-%d\ %H:%M:%S)"
+  rules:
+    - if: $CI_COMMIT_BRANCH == "main"
