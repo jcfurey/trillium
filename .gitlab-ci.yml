@@ -1,5 +1,5 @@
 default:
-  image: node:build
+  image: node:22
 
 # variables:
 #   DOCKER_TLS_CERTDIR: ""
