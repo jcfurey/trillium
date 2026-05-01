@@ -13,11 +13,10 @@ cache:
     - node_modules/
     - .yarn/cache/
 
-before_script:
-  - corepack enable
-
 install_dependencies:
   stage: install
+  before_script:
+    - corepack enable
   script:
     - yarn install
   artifacts:
@@ -27,6 +26,8 @@ install_dependencies:
 
 build_app:
   stage: build
+  before_script:
+    - corepack enable
   script:
     - yarn run web:build:prod
   artifacts:
