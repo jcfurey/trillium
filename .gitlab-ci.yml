@@ -2,7 +2,9 @@ image: node:22
 stages:
   - install
   - build
-
+variables:
+  YARN_ENABLE_IMMUTABLE_INSTALLS: false
+  
 cache:
   paths:
     - node_modules/
