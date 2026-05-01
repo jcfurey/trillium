@@ -31,7 +31,7 @@ build_app:
     - yarn run web:build:prod
   artifacts:
     paths:
-      - src/web/
+      - web/.webpack/
     expire_in: 1 hour
 
 release_app:
