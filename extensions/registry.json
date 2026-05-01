@@ -652,7 +652,7 @@
     "license": "TODO",
     "version": "0.0.2",
     "sha256sum": "a7d318a9fe7881e6d6b796a656ad0c5e1820c8ce29e30aee91b93562bc72ac5c",
-    "foxe": "http://localhost:8080/grid_map.grid_map_foxglove-0.0.2.foxe",
+    "foxe": "http://localhost:80/grid_map.grid_map_foxglove-0.0.2.foxe",
     "keywords": [
       "foxglove",
       "ros",
@@ -670,7 +670,7 @@
     "license": "TODO",
     "version": "2.0.0",
     "sha256sum": "1dfb5e67aaed02a891e4b03c087971ec0e488ae4bfffbac275350455f40d4675",
-    "foxe": "http://localhost:8080/kubojion.foxglove-3d-tiles-2.0.0.foxe",
+    "foxe": "http://localhost:80/kubojion.foxglove-3d-tiles-2.0.0.foxe",
     "keywords": [
       "foxglove",
       "ros",
