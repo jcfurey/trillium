@@ -1,0 +1,21 @@
+default:
+  image: node:build
+
+# variables:
+#   DOCKER_TLS_CERTDIR: ""
+#   ARCHIVE_DIR: "/Archive/Builds/Workspaces"
+
+#   ERDC_DOCKER_CONTAINER_CACHE_URI: "10.2.2.42:3242"
+#   ERDC_DOCKER_CONTAINER_REGISTRY_URI: "10.2.2.42:3247"
+
+  # If clone fails, go to ${target_url}/-/settings/ci_cd#js-token-access and add 'erdc_robotics/ROS2/workspace' to the allowlist
+#   GIT_SUBMODULE_STRATEGY: recursive
+#   GIT_SUBMODULE_FORCE_HTTPS: true
+
+build:
+  stage: build
+  script:
+      - cd src
+      - corepack enable
+      - yarn install
+      - yarn run web:build:prod
