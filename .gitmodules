@@ -1,0 +1,6 @@
+[submodule "extensions/Gridmap-Extension-for-Foxglove"]
+	path = extensions/Gridmap-Extension-for-Foxglove
+	url = https://github.com/aAccount11/Gridmap-Extension-for-Foxglove.git
+[submodule "extensions/foxglove-3d-tiles"]
+	path = extensions/foxglove-3d-tiles
+	url = https://github.com/kubojion/foxglove-3d-tiles.git
