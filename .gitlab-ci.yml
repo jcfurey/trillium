@@ -33,6 +33,7 @@ build_app:
   before_script:
     - corepack enable
   script:
+    - apk add jq
     - RELEASE_TAG="release-$(date +%Y%m%d%H%M%S)"
     - git submodule update --init --recursive
     - yarn run web:build:prod
