@@ -1,9 +1,6 @@
 #!/bin/sh
 
 current_dir=$(pwd)
-
-mkdir -p release
-rm -rf release
 mkdir release
 
 cp registry.json release/registry.json
