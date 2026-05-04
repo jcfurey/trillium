@@ -30,10 +30,18 @@ build_app:
   before_script:
     - corepack enable
   script:
+    - RELEASE_TAG="release-$(date +%Y%m%d%H%M%S)"
+    - git submodule update --init --recursive
     - yarn run web:build:prod
+    - cd extensions 
+    - sh build_extensions.sh 
+    - cp -r release ../web/.webpack/extensions
+    - rm -r release
+    - cd ..
+    - tar -czf $RELEASE_TAG.tar.gz -C web/.webpack .
   artifacts:
     paths:
-      - web/.webpack/
+      - $RELEASE_TAG.tar.gz
     expire_in: 1 hour
 
 release_app:
@@ -48,13 +56,6 @@ release_app:
     - echo "Creating $RELEASE_TAG"
     - glab auth login --job-token "$CI_JOB_TOKEN" --hostname "$CI_SERVER_HOST"
     - glab config set telemetry false
-    - git submodule update --init --recursive
-    - cd extensions 
-    - sh build_extensions.sh 
-    - cp -r release ../web/.webpack/extensions
-    - rm -r release
-    - cd ..
-    - tar -czf $RELEASE_TAG.tar.gz -C web/.webpack .
     - glab release create $RELEASE_TAG --name "$RELEASE_NAME" --notes "Automated release created at $(date "+%Y-%m-%d %H:%M:%S")" $RELEASE_TAG.tar.gz
 
   rules:
