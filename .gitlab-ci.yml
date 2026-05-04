@@ -52,7 +52,7 @@ release_app:
     - cd extensions 
     - sh build_extensions.sh 
     - cp -r release ../web/.webpack/extensions
-    - rm release
+    - rm -r release
     - cd ..
     - tar -czf $RELEASE_TAG.tar.gz -C web/.webpack .
     - glab release create $RELEASE_TAG --name "$RELEASE_NAME" --notes "Automated release created at $(date "+%Y-%m-%d %H:%M:%S")" $RELEASE_TAG.tar.gz
