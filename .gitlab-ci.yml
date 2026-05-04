@@ -10,6 +10,7 @@ variables:
   GIT_STRATEGY: clone
   GIT_SUBMODULE_STRATEGY: recursive
   GIT_SUBMODULE_FORCE_HTTPS: true
+  ELECTRON_SKIP_BINARY_DOWNLOAD: 1
   YARN_ENABLE_IMMUTABLE_INSTALLS: false
 
 cache:
@@ -22,7 +23,7 @@ install_dependencies:
   before_script:
     - corepack enable
   script:
-    - yarn install
+    - yarn install --immutable
   artifacts:
     paths:
       - node_modules/
@@ -34,13 +35,8 @@ build_app:
     - corepack enable
   script:
     - apt update && apt install jq --no-install-recommends -y
-    - git submodule update --init --recursive
     - yarn run web:build:prod
-    - cd extensions 
-    - sh build_extensions.sh 
-    - cp -r release ../web/.webpack/extensions
-    - rm -r release
-    - cd ..
+    - cd extensions && sh build_extensions.sh && cp -r release ../web/.webpack/extensions && rm -r release && cd ..
     - tar -czf release.tar.gz -C web/.webpack .
   artifacts:
     paths:
