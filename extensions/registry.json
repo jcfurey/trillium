@@ -640,41 +640,5 @@
       "ros",
       "wrench"
     ]
-  },
-  {
-    "id": "cerl.grid_map",
-    "name": "Grid Map Plugin",
-    "description": "This extension displays grid maps.",
-    "publisher": "CERL",
-    "homepage": "CERL",
-    "readme": "TODO",
-    "changelog": "TODO",
-    "license": "TODO",
-    "version": "0.0.2",
-    "sha256sum": "a7d318a9fe7881e6d6b796a656ad0c5e1820c8ce29e30aee91b93562bc72ac5c",
-    "foxe": "http://localhost:80/grid_map.grid_map_foxglove-0.0.2.foxe",
-    "keywords": [
-      "foxglove",
-      "ros",
-      "wrench"
-    ]
-  },
-  {
-    "id": "kubojion.3dtiles",
-    "name": "3D Tiles",
-    "description": "This extension visualizes the robot ona 3d map.",
-    "publisher": "Kubojion",
-    "homepage": "https://github.com/kubojion/foxglove-3d-tiles",
-    "readme": "TODO",
-    "changelog": "TODO",
-    "license": "TODO",
-    "version": "2.0.0",
-    "sha256sum": "1dfb5e67aaed02a891e4b03c087971ec0e488ae4bfffbac275350455f40d4675",
-    "foxe": "http://localhost:80/kubojion.foxglove-3d-tiles-2.0.0.foxe",
-    "keywords": [
-      "foxglove",
-      "ros",
-      "wrench"
-    ]
   }
 ]
