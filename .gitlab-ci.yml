@@ -48,6 +48,7 @@ release_app:
     - echo "Creating $RELEASE_TAG"
     - glab auth login --job-token "$CI_JOB_TOKEN" --hostname "$CI_SERVER_HOST"
     - glab config set telemetry false
+    - git submodule update --init --recursive
     - cd extensions 
     - sh build_extensions.sh 
     - cp -r release ../web/.webpack/extensions
