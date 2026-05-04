@@ -33,7 +33,7 @@ build_app:
   before_script:
     - corepack enable
   script:
-    - apt install jq --no-install-recommends -y
+    - apt update && apt install jq --no-install-recommends -y
     - RELEASE_TAG="release-$(date +%Y%m%d%H%M%S)"
     - git submodule update --init --recursive
     - yarn run web:build:prod
