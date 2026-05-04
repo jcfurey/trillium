@@ -48,7 +48,11 @@ release_app:
     - echo "Creating $RELEASE_TAG"
     - glab auth login --job-token "$CI_JOB_TOKEN" --hostname "$CI_SERVER_HOST"
     - glab config set telemetry false
-    - cd extensions && sh build_extensions.sh && cp release ../web/.webpack/extensions && rm release
+    - cd extensions 
+    - sh build_extensions.sh 
+    - cp -r release ../web/.webpack/extensions
+    - rm release
+    - cd ..
     - tar -czf $RELEASE_TAG.tar.gz -C web/.webpack .
     - glab release create $RELEASE_TAG --name "$RELEASE_NAME" --notes "Automated release created at $(date "+%Y-%m-%d %H:%M:%S")" $RELEASE_TAG.tar.gz
 
