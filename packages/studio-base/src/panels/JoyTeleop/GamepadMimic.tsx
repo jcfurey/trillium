@@ -8,13 +8,16 @@
 // and forces a render at ~30 Hz so the SVG redraws live without the parent
 // panel having to re-render every frame.
 
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { makeStyles } from "tss-react/mui";
 
 import type { ControllerPresetId } from "./controllerPresets";
 import { GamepadSVG } from "./GamepadSVG";
 import type { GamepadState, GamepadVisualizationMode } from "./gamepadTypes";
+import { attachSvgInteraction } from "./svgInteraction";
+import { TriggerSliderOverlay } from "./TriggerSliderOverlay";
 import type { GamepadSnapshot } from "./useGamepad";
+import type { ManualInputApi } from "./useManualInput";
 
 type Props = {
   getSnapshot: () => GamepadSnapshot | undefined;
@@ -22,6 +25,7 @@ type Props = {
   deviceName?: string;
   present: boolean;
   deadzone: number;
+  manualInput: ManualInputApi;
 };
 
 // CSS variables consumed by the upstream SVGs. Set on a wrapper div so
@@ -103,6 +107,8 @@ const useStyles = makeStyles()((theme) => ({
     display: "flex",
     alignItems: "center",
     justifyContent: "center",
+    // Anchor the absolutely-positioned trigger sliders to this container.
+    position: "relative",
   },
 }));
 
@@ -113,9 +119,11 @@ function visualModeForPreset(preset: ControllerPresetId): GamepadVisualizationMo
   switch (preset) {
     case "xbox":
       return "xbox";
+    case "ps5":
+      return "dualsense";
     case "ps3":
     case "ps4":
-      return "dualsense";
+      return "dualshock4";
     case "generic":
     case "custom":
     default:
@@ -129,6 +137,7 @@ export function GamepadMimic({
   deviceName,
   present,
   deadzone,
+  manualInput,
 }: Props): JSX.Element {
   const { classes } = useStyles();
 
@@ -151,6 +160,22 @@ export function GamepadMimic({
       cancelAnimationFrame(raf);
     };
   }, []);
+
+  // After the SVG mounts, attach pointer handlers via event delegation.
+  // The visual mode (xbox / dualsense / dualshock4 / generic) drives which
+  // SVG component renders, so we re-bind whenever it changes.
+  const svgWrapRef = useRef<HTMLDivElement | null>(null);
+  useEffect(() => {
+    const wrap = svgWrapRef.current;
+    if (!wrap) {
+      return;
+    }
+    const svg = wrap.querySelector<SVGSVGElement>("svg.gamepad-viz");
+    if (!svg) {
+      return;
+    }
+    return attachSvgInteraction(svg, manualInput);
+  }, [manualInput, preset, present]);
 
   const snap = getSnapshot();
   // Build a GamepadState the upstream renderer can consume. Always pass
@@ -178,11 +203,17 @@ export function GamepadMimic({
           window focused) to wake the browser Gamepad API.
         </div>
       )}
-      <div className={classes.svgWrap}>
+      <div ref={svgWrapRef} className={classes.svgWrap}>
         <GamepadSVG
           gamepad={gamepad}
           visualMode={visualMode}
           deadzone={{ enabled: deadzone > 0, value: deadzone }}
+        />
+        <TriggerSliderOverlay
+          wrapRef={svgWrapRef}
+          getSnapshot={getSnapshot}
+          manualInput={manualInput}
+          rebindKey={`${visualMode}-${present ? "1" : "0"}`}
         />
       </div>
     </div>

@@ -7,3 +7,4 @@
 export { GenericController } from "./GenericController";
 export { XboxController } from "./XboxController";
 export { DualSenseController } from "./DualSenseController";
+export { DualShock4Controller } from "./DualShock4Controller";

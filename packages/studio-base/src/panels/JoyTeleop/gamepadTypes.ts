@@ -17,7 +17,7 @@ export interface GamepadState {
   axes: number[];
 }
 
-export type GamepadVisualType = "generic" | "xbox" | "dualsense";
+export type GamepadVisualType = "generic" | "xbox" | "dualsense" | "dualshock4";
 export type GamepadVisualizationMode = "auto" | GamepadVisualType;
 
 export type RenderContext = {

@@ -80,16 +80,19 @@ const BUTTON_TO_INDEX_MAP: Record<string, number> = {
 
 export function detectGamepadVisualType(
   gamepadId: string | undefined,
-  preferredType?: "xbox" | "dualsense",
+  preferredType?: "xbox" | "dualsense" | "dualshock4",
 ): GamepadVisualType {
   const id = (gamepadId ?? "").toLowerCase();
 
-  if (id.includes("dualshock") || id.includes("playstation(r)4") || id.includes("ps4")) {
+  // PS5 (DualSense) — checked first because some browsers report "wireless
+  // controller" + "sony" without an explicit ds5/ds4 marker; if both are
+  // present, prefer the newer renderer.
+  if (id.includes("dualsense") || id.includes("playstation(r)5") || id.includes("ps5")) {
     return "dualsense";
   }
 
-  if (id.includes("dualsense") || id.includes("playstation(r)5") || id.includes("ps5")) {
-    return "dualsense";
+  if (id.includes("dualshock") || id.includes("playstation(r)4") || id.includes("ps4")) {
+    return "dualshock4";
   }
 
   if (id.includes("xbox") || id.includes("xinput") || id.includes("microsoft")) {

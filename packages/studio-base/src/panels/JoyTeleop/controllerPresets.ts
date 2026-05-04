@@ -12,7 +12,7 @@
 // layer is what maps "axis 1 = forward". Don't try to remap here — that
 // would diverge from the teleop-docker contract the robot expects.
 
-export type ControllerPresetId = "xbox" | "ps4" | "ps3" | "generic" | "custom";
+export type ControllerPresetId = "xbox" | "ps5" | "ps4" | "ps3" | "generic" | "custom";
 
 export type ControllerPreset = {
   id: ControllerPresetId;
@@ -58,10 +58,10 @@ const XBOX: ControllerPreset = {
   ],
 };
 
-// DualShock 4 / DualSense
+// DualShock 4
 const PS4: ControllerPreset = {
   id: "ps4",
-  label: "PlayStation 4 / 5",
+  label: "PlayStation 4 (DualShock)",
   axes: 4,
   buttons: 17,
   axisLabels: [...STANDARD_AXIS_LABELS],
@@ -75,6 +75,36 @@ const PS4: ControllerPreset = {
     "L2",
     "R2",
     "Share",
+    "Options",
+    "LStick",
+    "RStick",
+    "D-Up",
+    "D-Down",
+    "D-Left",
+    "D-Right",
+    "PS",
+  ],
+};
+
+// DualSense (PS5). Same standard W3C mapping as DS4 — only the visual
+// is different. Mute is exposed on a separate (vendor-specific) index in
+// some browsers; we don't claim a slot here to stay W3C-standard.
+const PS5: ControllerPreset = {
+  id: "ps5",
+  label: "PlayStation 5 (DualSense)",
+  axes: 4,
+  buttons: 17,
+  axisLabels: [...STANDARD_AXIS_LABELS],
+  buttonLabels: [
+    "Cross",
+    "Circle",
+    "Square",
+    "Triangle",
+    "L1",
+    "R1",
+    "L2",
+    "R2",
+    "Create",
     "Options",
     "LStick",
     "RStick",
@@ -172,6 +202,7 @@ const CUSTOM: ControllerPreset = {
 
 export const CONTROLLER_PRESETS: Record<ControllerPresetId, ControllerPreset> = {
   xbox: XBOX,
+  ps5: PS5,
   ps4: PS4,
   ps3: PS3,
   generic: GENERIC,
@@ -194,4 +225,11 @@ export function presetLabelsFor(
     .fill("")
     .map((_, i) => preset.buttonLabels[i] ?? `B${i}`);
   return { axisLabels, buttonLabels };
+}
+
+// Identity index map of length N: [0, 1, ..., N-1]. Used as the default
+// axisMap/buttonMap so a fresh config publishes raw physical indices
+// straight through (no remap until the user changes it).
+export function identityMap(length: number): number[] {
+  return new Array(length).fill(0).map((_, i) => i);
 }

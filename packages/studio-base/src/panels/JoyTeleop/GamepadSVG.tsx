@@ -6,7 +6,12 @@
 
 import type * as React from "react";
 
-import { DualSenseController, GenericController, XboxController } from "./controllers";
+import {
+  DualSenseController,
+  DualShock4Controller,
+  GenericController,
+  XboxController,
+} from "./controllers";
 import { buildRenderContext, detectGamepadVisualType } from "./renderContext";
 import { ControllerDeadzoneSettings, GamepadState, GamepadVisualizationMode } from "./gamepadTypes";
 
@@ -18,7 +23,7 @@ export function GamepadSVG({
 }: {
   gamepad: GamepadState | null;
   visualMode?: GamepadVisualizationMode;
-  preferredVisualType?: "xbox" | "dualsense";
+  preferredVisualType?: "xbox" | "dualsense" | "dualshock4";
   deadzone?: ControllerDeadzoneSettings;
 }): React.ReactElement {
   const visualType =
@@ -27,6 +32,10 @@ export function GamepadSVG({
 
   if (visualType === "dualsense") {
     return <DualSenseController ctx={ctx} />;
+  }
+
+  if (visualType === "dualshock4") {
+    return <DualShock4Controller ctx={ctx} />;
   }
 
   if (visualType === "xbox") {
