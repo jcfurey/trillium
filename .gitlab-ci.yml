@@ -23,7 +23,7 @@ install_dependencies:
   before_script:
     - corepack enable
   script:
-    - yarn install --immutable
+    - yarn install
   artifacts:
     paths:
       - node_modules/
