@@ -42,7 +42,7 @@ do
        --arg license "$PACKAGE_LICENSE" \
        --arg version "$PACKAGE_VERSION" \
        --arg sha256 "$PACKAGE_SHA256" \
-       --arg foxe "localhost/extensions/$PACKAGE" \
+       --arg foxe "extensions/$PACKAGE" \
        --argjson keywords "$PACKAGE_KEYWORDS" \
        '
        . += [{
