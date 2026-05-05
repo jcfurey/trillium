@@ -27,9 +27,18 @@ import {
   presetLabelsFor,
 } from "./controllerPresets";
 import { GamepadMimic } from "./GamepadMimic";
+import {
+  JOYSTICK_LIST_DATATYPES,
+  JOYSTICK_LIST_SCHEMA,
+  JoystickListMsg,
+  JoystickMsg,
+} from "./joystickListDatatypes";
+import { useFeedbackSubscription } from "./useFeedbackSubscription";
+import { useGamepadList, PadSnapshot } from "./useGamepadList";
 import { useManualInput, mergeOverride } from "./useManualInput";
+import { useStickyButtons } from "./useStickyButtons";
 import { VirtualJoystick, VirtualJoystickHandle } from "./VirtualJoystick";
-import { useGamepad, GamepadSnapshot } from "./useGamepad";
+import { GamepadSnapshot } from "./useGamepad";
 
 type DisplayStyle = "mimic" | "list";
 
@@ -71,9 +80,50 @@ type Config = {
     topic: string;
     rate: number;
   };
+  // Toggle for the legacy sensor_msgs/Joy publish on `topic`. Defaults to
+  // true so unmodified configs keep publishing exactly as they did before.
+  joyEnabled: boolean;
+  // Rising-edge toggle mode: each button-down flips the published value;
+  // button-up is ignored. Mirrors joystick_library/joystick_driver's
+  // `sticky_buttons` param.
+  stickyButtons: boolean;
+  // joystick_interfaces/JoystickList publish: richer wire format that
+  // carries metadata (host_id, per-pad name/serial/guid, axis/button
+  // labels) so the robot-side joystick_aggregator can route by source
+  // and downstream controllers can filter by label rather than physical
+  // index. Off by default — enable when consuming this on the robot.
+  joystickList: {
+    enabled: boolean;
+    topic: string;
+    // Free-form publisher id; defaults to window.location.hostname at
+    // panel mount but the operator can pin it to anything (e.g.
+    // "operator-station-A") for aggregator filtering.
+    hostId: string;
+    // Substring matched against navigator.Gamepad.id to choose which pad
+    // drives the legacy /teleop/joy topic AND which one's labels are
+    // applied in JoystickList. "" → first connected pad.
+    primaryPadFilter: string;
+  };
+  // Subscribe to a JoystickFeedbackList topic and dispatch TYPE_RUMBLE
+  // entries to the matching pad's vibrationActuator.
+  feedback: {
+    enabled: boolean;
+    topic: string;
+  };
+  // Index INTO the connected-pads list (not Gamepad.index) selecting which
+  // pad the visualizer renders. Defaults to 0 so the first pad is shown.
+  // Independent of primaryPadFilter — inspecting a pad in the visualizer
+  // doesn't change what gets published.
+  visualizerPadIndex: number;
 };
 
 const DEFAULT_PRESET: ControllerPresetId = "xbox";
+
+// Resolve the default host_id at module load. window.location is always
+// defined in the browser; falls back to "" in non-browser test runners
+// (which lodash merge will then preserve as the persisted value).
+const DEFAULT_HOST_ID =
+  typeof window !== "undefined" ? window.location.hostname || "trillium" : "";
 
 const DEFAULT_CONFIG: Config = {
   topic: "/teleop/joy",
@@ -96,6 +146,19 @@ const DEFAULT_CONFIG: Config = {
     topic: "/teleop/heartbeat",
     rate: 1.0,
   },
+  joyEnabled: true,
+  stickyButtons: false,
+  joystickList: {
+    enabled: false,
+    topic: "/teleop/joystick_list",
+    hostId: DEFAULT_HOST_ID,
+    primaryPadFilter: "",
+  },
+  feedback: {
+    enabled: false,
+    topic: "/teleop/joystick_feedback",
+  },
+  visualizerPadIndex: 0,
 };
 
 const JOY_DATATYPES = new Map([
@@ -176,9 +239,24 @@ function buildSettingsTree(
   config: Config,
   topics: readonly Topic[],
   status: string,
+  pads: readonly { index: number; id: string; axesCount: number; buttonsCount: number }[],
 ): SettingsTreeNodes {
   const joyTopics = topics
     .filter((t) => t.schemaName === "sensor_msgs/msg/Joy" || t.schemaName === "sensor_msgs/Joy")
+    .map((t) => t.name);
+  const joystickListTopics = topics
+    .filter(
+      (t) =>
+        t.schemaName === "joystick_interfaces/msg/JoystickList" ||
+        t.schemaName === JOYSTICK_LIST_SCHEMA,
+    )
+    .map((t) => t.name);
+  const feedbackTopics = topics
+    .filter(
+      (t) =>
+        t.schemaName === "joystick_interfaces/msg/JoystickFeedbackList" ||
+        t.schemaName === "joystick_interfaces/JoystickFeedbackList",
+    )
     .map((t) => t.name);
   // Counts and labels are always editable. Selecting a preset just loads
   // its defaults; selecting "Custom" doesn't enable extra editing — it's
@@ -347,6 +425,27 @@ function buildSettingsTree(
         value: config.displayStyle,
         options: DISPLAY_STYLE_OPTIONS,
       },
+      joyEnabled: {
+        label: "Publish /Joy",
+        input: "boolean",
+        value: config.joyEnabled,
+        help: "Publish sensor_msgs/Joy on the topic above. Turn off if only consuming JoystickList downstream.",
+      },
+      stickyButtons: {
+        label: "Sticky buttons",
+        input: "boolean",
+        value: config.stickyButtons,
+        help: "Each button-down toggles the published value; button-up is ignored. Mirrors joystick_library/joystick_driver's sticky_buttons param.",
+      },
+      visualizerPadIndex: {
+        label: "Visualizer pad #",
+        input: "number",
+        value: config.visualizerPadIndex,
+        min: 0,
+        max: 31,
+        step: 1,
+        help: "Index into the connected-pads list (see Pads section). The visualizer renders this pad's input. Independent of the JoystickList primary-pad filter.",
+      },
       status: { label: "Input", input: "string", value: status, readonly: true },
     },
     children: {
@@ -364,6 +463,80 @@ function buildSettingsTree(
             step: 0.5,
           },
         },
+      },
+      joystickList: {
+        label: "JoystickList publish",
+        fields: {
+          enabled: {
+            label: "Enabled",
+            input: "boolean",
+            value: config.joystickList.enabled,
+            help: "Publish joystick_interfaces/JoystickList — multi-pad metadata-rich format consumed by joystick_aggregator.",
+          },
+          topic: {
+            label: "Topic",
+            input: "autocomplete",
+            value: config.joystickList.topic,
+            items: joystickListTopics,
+          },
+          hostId: {
+            label: "host_id",
+            input: "string",
+            value: config.joystickList.hostId,
+            placeholder: DEFAULT_HOST_ID,
+            help: "Free-form publisher id used by joystick_aggregator to route by source.",
+          },
+          primaryPadFilter: {
+            label: "Primary pad filter",
+            input: "string",
+            value: config.joystickList.primaryPadFilter,
+            placeholder: "(first connected pad)",
+            help: "Substring match against navigator.Gamepad.id to choose which pad drives /Joy and contributes the curated axis/button labels. Empty = first connected.",
+          },
+        },
+      },
+      feedback: {
+        label: "Feedback (rumble)",
+        fields: {
+          enabled: {
+            label: "Enabled",
+            input: "boolean",
+            value: config.feedback.enabled,
+            help: "Subscribe to a JoystickFeedbackList topic and dispatch TYPE_RUMBLE to matching pads via the Gamepad API. LED/buzzer types are accepted but silently ignored.",
+          },
+          topic: {
+            label: "Topic",
+            input: "autocomplete",
+            value: config.feedback.topic,
+            items: feedbackTopics,
+          },
+        },
+      },
+      pads: {
+        label: `Pads (${pads.length} connected)`,
+        fields: Object.fromEntries(
+          pads.length === 0
+            ? [
+                [
+                  "none",
+                  {
+                    label: "(none)",
+                    input: "string" as const,
+                    value: "Plug in a controller, then press any button",
+                    readonly: true,
+                  },
+                ],
+              ]
+            : pads.map((p, i) => [
+                `pad_${i}`,
+                {
+                  label: `[${i}] idx=${p.index}`,
+                  input: "string" as const,
+                  value: `${p.id}  (${p.axesCount} axes, ${p.buttonsCount} buttons)`,
+                  readonly: true,
+                },
+              ]),
+        ),
       },
       axisLabels: axisLabelsNode,
       buttonLabels: buttonLabelsNode,
@@ -415,6 +588,13 @@ function nowStamp(): { sec: number; nanosec: number } {
   return { sec: Math.floor(ms / 1000), nanosec: (ms % 1000) * 1_000_000 };
 }
 
+// Convert a multi-pad PadSnapshot into the single-pad GamepadSnapshot
+// shape consumed by the existing visualizers (GamepadMimic, etc.). The
+// arrays are passed through by reference; callers must not mutate.
+function padToGamepadSnapshot(pad: PadSnapshot): GamepadSnapshot {
+  return { name: pad.id, axes: pad.axes, buttons: pad.buttons };
+}
+
 // Apply preset on top of the current Config — preserves topic/heartbeat etc.,
 // but overrides axes/buttons counts and labels with the preset's defaults.
 // Remap also resets to identity since the preset implies a fresh layout.
@@ -462,9 +642,10 @@ function JoyTeleopPanel(props: JoyTeleopPanelProps): JSX.Element {
     };
   });
 
-  const gamepad = useGamepad();
+  const gamepadList = useGamepadList();
   const virtualRef = useRef<VirtualJoystickHandle | null>(null);
   const manualInput = useManualInput();
+  const sticky = useStickyButtons();
 
   // Virtual-deadman arming. Space is the modifier key; we listen only
   // while the panel is "active" (hover or in-flight pointer interaction)
@@ -533,11 +714,29 @@ function JoyTeleopPanel(props: JoyTeleopPanelProps): JSX.Element {
     };
   }, [panelActive]);
 
-  // Stable ref into the latest gamepad reading so the settings action
-  // handler (called on user click) can read live counts without a stale
-  // closure on `gamepad`.
-  const gamepadLiveRef = useRef(gamepad);
-  gamepadLiveRef.current = gamepad;
+  // Stable ref into the latest multi-pad reading so callbacks (settings
+  // action handler, capture watcher, publish loop) can read live counts
+  // without a stale closure on `gamepadList`.
+  const gamepadListLiveRef = useRef(gamepadList);
+  gamepadListLiveRef.current = gamepadList;
+
+  // Pad selection helpers. `pickPrimaryPad` chooses the pad that drives
+  // /Joy and supplies the curated axis/button labels in JoystickList; an
+  // empty filter falls back to the first connected pad. `pickVisualizerPad`
+  // is independent of the publish path so inspecting a pad in the
+  // visualizer doesn't silently change what gets published on /Joy.
+  const pickPrimaryPad = useCallback(
+    (snaps: readonly PadSnapshot[], filter: string): PadSnapshot | undefined => {
+      if (snaps.length === 0) {
+        return undefined;
+      }
+      if (filter === "") {
+        return snaps[0];
+      }
+      return snaps.find((p) => p.id.includes(filter)) ?? snaps[0];
+    },
+    [],
+  );
 
   // Live config ref shared by the capture watcher and the publish loop —
   // both need the latest value without retriggering the effect whenever an
@@ -557,10 +756,28 @@ function JoyTeleopPanel(props: JoyTeleopPanelProps): JSX.Element {
   // the user-gesture wake-up). When true, the on-screen sticks take over
   // as the input source.
   const useVirtual = config.forceVirtual;
+  // Primary pad summary (for the status line) — derived from the same
+  // re-rendering pads list the settings tree uses, so it stays in sync
+  // when pads connect/disconnect.
+  const primaryPadSummary = useMemo(() => {
+    if (gamepadList.pads.length === 0) {
+      return undefined;
+    }
+    if (config.joystickList.primaryPadFilter === "") {
+      return gamepadList.pads[0];
+    }
+    return (
+      gamepadList.pads.find((p) => p.id.includes(config.joystickList.primaryPadFilter)) ??
+      gamepadList.pads[0]
+    );
+  }, [gamepadList.pads, config.joystickList.primaryPadFilter]);
+  const padCount = gamepadList.pads.length;
   const baseStatus = useVirtual
     ? "Virtual (on-screen)"
-    : gamepad.present
-    ? `Gamepad: ${gamepad.name ?? "connected"}`
+    : primaryPadSummary
+    ? padCount > 1
+      ? `Primary: ${primaryPadSummary.id}  (${padCount} pads)`
+      : `Gamepad: ${primaryPadSummary.id}`
     : "Waiting for gamepad input";
   const status =
     captureMode != undefined
@@ -568,16 +785,17 @@ function JoyTeleopPanel(props: JoyTeleopPanelProps): JSX.Element {
       : baseStatus;
 
   const settingsActionHandler = useCallback((action: SettingsTreeAction) => {
-    // Detect button on the General node — pull the live gamepad's actual
+    // Detect button on the General node — pull the primary pad's actual
     // axes/buttons counts and label them with the current preset's defaults.
     if (action.action === "perform-node-action" && action.payload.id === "detect-from-pad") {
-      const snap = gamepadLiveRef.current.getSnapshot();
-      if (!snap) {
+      const snaps = gamepadListLiveRef.current.getSnapshot();
+      const primary = pickPrimaryPad(snaps, configRef.current.joystickList.primaryPadFilter);
+      if (!primary) {
         return;
       }
       setConfig((prev) => {
-        const axes = snap.axes.length;
-        const buttons = snap.buttons.length;
+        const axes = primary.axes.length;
+        const buttons = primary.buttons.length;
         const { axisLabels, buttonLabels } = presetLabelsFor(prev.preset, axes, buttons);
         return {
           ...prev,
@@ -646,11 +864,25 @@ function JoyTeleopPanel(props: JoyTeleopPanelProps): JSX.Element {
       _.set(next, path.slice(1), value);
       return next;
     });
-  }, []);
+  }, [pickPrimaryPad]);
+
+  // Force-feedback subscription. Returns a dispatchFrame() that the panel's
+  // onRender hook fans frames into — keeps a single source of truth for
+  // context.onRender ownership (overriding it from inside the hook would
+  // race against the topics/colorScheme handler below).
+  const feedback = useFeedbackSubscription({
+    context,
+    enabled: config.feedback.enabled,
+    topic: config.feedback.topic,
+    getLivePads: gamepadList.getLivePads,
+  });
+  const feedbackDispatchRef = useRef(feedback.dispatchFrame);
+  feedbackDispatchRef.current = feedback.dispatchFrame;
 
   useLayoutEffect(() => {
     context.watch("topics");
     context.watch("colorScheme");
+    context.watch("currentFrame");
 
     context.onRender = (renderState, done) => {
       setTopics(renderState.topics ?? []);
@@ -658,6 +890,7 @@ function JoyTeleopPanel(props: JoyTeleopPanelProps): JSX.Element {
       if (renderState.colorScheme) {
         setColorScheme(renderState.colorScheme);
       }
+      feedbackDispatchRef.current(renderState.currentFrame);
     };
   }, [context]);
 
@@ -665,11 +898,15 @@ function JoyTeleopPanel(props: JoyTeleopPanelProps): JSX.Element {
   // and poll: the first physical axis to displace > 0.5 from baseline (or
   // first button to cross > 0.5 from a non-pressed start) is recorded into
   // the next slot. Advance through slots; clear mode when count is reached.
+  // Capture targets the *primary* pad (the one whose remap config is being
+  // edited); pressing a button on a non-primary pad does nothing.
   useEffect(() => {
     if (captureMode == undefined) {
       return;
     }
-    const baseline = gamepadLiveRef.current.getSnapshot();
+    const filter = configRef.current.joystickList.primaryPadFilter;
+    const baselineList = gamepadListLiveRef.current.getSnapshot();
+    const baseline = pickPrimaryPad(baselineList, filter);
     if (!baseline) {
       return;
     }
@@ -677,7 +914,10 @@ function JoyTeleopPanel(props: JoyTeleopPanelProps): JSX.Element {
     const baseButtons = [...baseline.buttons];
     let raf = 0;
     const tick = () => {
-      const snap = gamepadLiveRef.current.getSnapshot();
+      const snap = pickPrimaryPad(
+        gamepadListLiveRef.current.getSnapshot(),
+        configRef.current.joystickList.primaryPadFilter,
+      );
       if (snap) {
         if (captureMode.kind === "axis") {
           let detected = -1;
@@ -733,89 +973,183 @@ function JoyTeleopPanel(props: JoyTeleopPanelProps): JSX.Element {
     return () => {
       cancelAnimationFrame(raf);
     };
-  }, [captureMode]);
+  }, [captureMode, pickPrimaryPad]);
 
   useEffect(() => {
     context.updatePanelSettingsEditor({
       actionHandler: settingsActionHandler,
-      nodes: buildSettingsTree(config, topics, status),
+      nodes: buildSettingsTree(config, topics, status, gamepadList.pads),
     });
     saveState(config);
-  }, [config, context, saveState, settingsActionHandler, status, topics]);
+  }, [config, context, saveState, settingsActionHandler, status, topics, gamepadList.pads]);
 
-  // Joy advertise + publish loop
+  // Joy + JoystickList advertise + publish loop
   const { topic: joyTopic, publishRate } = config;
+  const joyEnabled = config.joyEnabled;
+  const joystickListEnabled = config.joystickList.enabled;
+  const joystickListTopic = config.joystickList.topic;
   const canPublish = context.publish != undefined && context.advertise != undefined;
 
   const useVirtualRef = useRef(useVirtual);
   useVirtualRef.current = useVirtual;
 
-  // Snapshot accessor used by both the publish loop and the visualizer.
-  // Manual override (click-drag on the SVG, trigger sliders) is gated by
-  // the Space-held arming flag — a virtual deadman so the user can't drive
-  // by accident with a stray click. While armed, the configured deadman
-  // button index is synthesized as pressed so teleop_twist_joy's gate
-  // releases (mirrors holding L1 on a real pad).
-  const getActiveSnapshot = useCallback((): GamepadSnapshot | undefined => {
-    const base = useVirtualRef.current
-      ? virtualRef.current?.getSnapshot()
-      : gamepadLiveRef.current.getSnapshot();
-    if (!armedRef.current) {
-      return base;
-    }
-    const override = manualInput.getOverride();
-    const cfg = configRef.current;
-    const dm = cfg.virtualDeadmanButton;
-    const buttonsLen = Math.max(cfg.buttons, base?.buttons.length ?? 0, dm + 1);
-    const { axes, buttons } = mergeOverride(
-      base?.axes,
-      base?.buttons,
-      override,
-      Math.max(cfg.axes, base?.axes.length ?? 0),
-      buttonsLen,
-    );
-    if (dm >= 0 && dm < buttons.length) {
-      buttons[dm] = 1;
-    }
-    return {
-      name: base?.name ?? "Manual override",
-      axes,
-      buttons,
-    };
-  }, [manualInput]);
+  // Apply the Space-armed manual override + virtual-deadman button
+  // synthesis on top of any base snapshot. Sticky-button transform must
+  // already have been applied to base.buttons by the caller (so manual
+  // override never re-toggles a sticky button).
+  const applyArmedOverlay = useCallback(
+    (base: GamepadSnapshot | undefined): GamepadSnapshot | undefined => {
+      if (!armedRef.current) {
+        return base;
+      }
+      const override = manualInput.getOverride();
+      const cfg = configRef.current;
+      const dm = cfg.virtualDeadmanButton;
+      const buttonsLen = Math.max(cfg.buttons, base?.buttons.length ?? 0, dm + 1);
+      const { axes, buttons } = mergeOverride(
+        base?.axes,
+        base?.buttons,
+        override,
+        Math.max(cfg.axes, base?.axes.length ?? 0),
+        buttonsLen,
+      );
+      if (dm >= 0 && dm < buttons.length) {
+        buttons[dm] = 1;
+      }
+      return { name: base?.name ?? "Manual override", axes, buttons };
+    },
+    [manualInput],
+  );
 
+  // Visualizer source — picks the pad named by visualizerPadIndex (0-based
+  // into the connected list). Always shows the *physical* state (not
+  // sticky-toggled) so the operator can see exactly what the pad is
+  // sending; sticky transforms only affect the published topics.
+  const getVisualizerSnapshot = useCallback((): GamepadSnapshot | undefined => {
+    if (useVirtualRef.current) {
+      return applyArmedOverlay(virtualRef.current?.getSnapshot());
+    }
+    const snaps = gamepadListLiveRef.current.getSnapshot();
+    if (snaps.length === 0) {
+      return applyArmedOverlay(undefined);
+    }
+    const idx = configRef.current.visualizerPadIndex;
+    const clamped = Math.max(0, Math.min(idx, snaps.length - 1));
+    return applyArmedOverlay(padToGamepadSnapshot(snaps[clamped] as PadSnapshot));
+  }, [applyArmedOverlay]);
+
+  // Advertise both topics independently. Joy's datatypes map is the same
+  // as before (back-compat); JoystickList ships its own custom map.
   useLayoutEffect(() => {
-    if (!canPublish || !joyTopic) {
+    if (!canPublish || !joyEnabled || !joyTopic) {
       return;
     }
     context.advertise?.(joyTopic, "sensor_msgs/Joy", { datatypes: JOY_DATATYPES });
     return () => {
       context.unadvertise?.(joyTopic);
     };
-  }, [context, canPublish, joyTopic]);
+  }, [context, canPublish, joyEnabled, joyTopic]);
 
   useLayoutEffect(() => {
-    if (!canPublish || !joyTopic || publishRate <= 0) {
+    if (!canPublish || !joystickListEnabled || !joystickListTopic) {
+      return;
+    }
+    context.advertise?.(joystickListTopic, JOYSTICK_LIST_SCHEMA, {
+      datatypes: JOYSTICK_LIST_DATATYPES,
+    });
+    return () => {
+      context.unadvertise?.(joystickListTopic);
+    };
+  }, [context, canPublish, joystickListEnabled, joystickListTopic]);
+
+  useLayoutEffect(() => {
+    if (!canPublish || publishRate <= 0) {
       return;
     }
     const intervalMs = 1000 / publishRate;
     const tick = () => {
       const cfg = configRef.current;
-      const snap = getActiveSnapshot();
-      const axes = applyDeadzone(snap?.axes ?? [], cfg.axisMap, cfg.deadzone, cfg.axes);
-      const buttons = clipButtons(snap?.buttons ?? [], cfg.buttonMap, cfg.buttons);
-      context.publish?.(joyTopic, {
-        header: { stamp: nowStamp(), frame_id: cfg.frameId },
-        axes,
-        buttons,
-      });
+      const allPadSnaps = gamepadListLiveRef.current.getSnapshot();
+
+      // Sticky pre-compute: advance state once per pad per tick so both
+      // publish branches see the same toggled output without double-flipping.
+      const stickyByIndex = new Map<number, number[]>();
+      if (cfg.stickyButtons) {
+        for (const pad of allPadSnaps) {
+          stickyByIndex.set(pad.index, sticky.apply(pad.index, pad.buttons));
+        }
+        sticky.prune(allPadSnaps.map((p) => p.index));
+      }
+      const buttonsFor = (pad: PadSnapshot): readonly number[] =>
+        stickyByIndex.get(pad.index) ?? pad.buttons;
+
+      const primary = pickPrimaryPad(allPadSnaps, cfg.joystickList.primaryPadFilter);
+
+      // ---- Joy publish (primary pad only; forceVirtual takes over) ----
+      if (cfg.joyEnabled && joyTopic) {
+        const baseSnap: GamepadSnapshot | undefined = useVirtualRef.current
+          ? virtualRef.current?.getSnapshot()
+          : primary
+          ? { name: primary.id, axes: primary.axes, buttons: buttonsFor(primary) }
+          : undefined;
+        const snap = applyArmedOverlay(baseSnap);
+        const axes = applyDeadzone(snap?.axes ?? [], cfg.axisMap, cfg.deadzone, cfg.axes);
+        const buttons = clipButtons(snap?.buttons ?? [], cfg.buttonMap, cfg.buttons);
+        context.publish?.(joyTopic, {
+          header: { stamp: nowStamp(), frame_id: cfg.frameId },
+          axes,
+          buttons,
+        });
+      }
+
+      // ---- JoystickList publish (every connected pad) ----
+      if (cfg.joystickList.enabled && cfg.joystickList.topic) {
+        const primaryIdx = primary?.index;
+        const stamp = nowStamp();
+        const joysticks: JoystickMsg[] = allPadSnaps.map((pad) => {
+          const isPrimary = pad.index === primaryIdx;
+          const btns = buttonsFor(pad);
+          // Primary pad uses the panel's curated counts/labels/maps so
+          // operators get the same wire shape as /Joy. Other pads pass
+          // through with identity maps and generic A0..Bn labels — the
+          // robot-side aggregator can still filter by name/serial/guid.
+          const axesLen = isPrimary ? cfg.axes : pad.axes.length;
+          const buttonsLen = isPrimary ? cfg.buttons : pad.buttons.length;
+          const axisMap = isPrimary ? cfg.axisMap : identityMap(pad.axes.length);
+          const buttonMap = isPrimary ? cfg.buttonMap : identityMap(pad.buttons.length);
+          const axes = applyDeadzone(pad.axes, axisMap, cfg.deadzone, axesLen);
+          const buttons = clipButtons(btns, buttonMap, buttonsLen);
+          const axisLabels = isPrimary
+            ? new Array<string>(axesLen).fill("").map((_, i) => cfg.axisLabels[i] ?? `A${i}`)
+            : axes.map((_, i) => `A${i}`);
+          const buttonLabels = isPrimary
+            ? new Array<string>(buttonsLen).fill("").map((_, i) => cfg.buttonLabels[i] ?? `B${i}`)
+            : buttons.map((_, i) => `B${i}`);
+          return {
+            index: pad.index,
+            name: pad.id,
+            serial: "",
+            guid: "",
+            axes,
+            axis_labels: axisLabels,
+            buttons,
+            button_labels: buttonLabels,
+          };
+        });
+        const msg: JoystickListMsg = {
+          header: { stamp, frame_id: cfg.frameId },
+          host_id: cfg.joystickList.hostId,
+          joysticks,
+        };
+        context.publish?.(cfg.joystickList.topic, msg);
+      }
     };
     tick();
     const handle = setInterval(tick, intervalMs);
     return () => {
       clearInterval(handle);
     };
-  }, [context, canPublish, joyTopic, publishRate, getActiveSnapshot]);
+  }, [context, canPublish, publishRate, joyTopic, applyArmedOverlay, sticky, pickPrimaryPad]);
 
   // Heartbeat advertise + publish loop
   const heartbeat = config.heartbeat;
@@ -855,11 +1189,13 @@ function JoyTeleopPanel(props: JoyTeleopPanelProps): JSX.Element {
     if (!canPublish) {
       return "Connect to a data source that supports publishing.";
     }
-    if (!joyTopic) {
-      return "Set a Joy topic in panel settings.";
+    const noOutgoing =
+      !(joyEnabled && joyTopic) && !(joystickListEnabled && joystickListTopic);
+    if (noOutgoing) {
+      return "Enable a publish topic in panel settings (Joy and/or JoystickList).";
     }
     return undefined;
-  }, [canPublish, joyTopic]);
+  }, [canPublish, joyEnabled, joyTopic, joystickListEnabled, joystickListTopic]);
 
   return (
     <ThemeProvider isDark={colorScheme === "dark"}>
@@ -882,22 +1218,22 @@ function JoyTeleopPanel(props: JoyTeleopPanelProps): JSX.Element {
             <VirtualJoystick ref={virtualRef} />
           ) : config.displayStyle === "mimic" ? (
             <GamepadMimic
-              getSnapshot={getActiveSnapshot}
+              getSnapshot={getVisualizerSnapshot}
               preset={config.preset}
               deviceName={status}
-              present={gamepad.present}
+              present={primaryPadSummary != undefined}
               deadzone={config.deadzone}
               manualInput={manualInput}
             />
           ) : (
             <ControllerVisualizer
-              getSnapshot={getActiveSnapshot}
+              getSnapshot={getVisualizerSnapshot}
               axesCount={config.axes}
               buttonsCount={config.buttons}
               axisLabels={config.axisLabels}
               buttonLabels={config.buttonLabels}
               deviceName={status}
-              present={gamepad.present}
+              present={primaryPadSummary != undefined}
             />
           )}
         </Stack>
