@@ -49,6 +49,6 @@ publish_package:
     - VERSION=$(date +%Y%m%d%H%M%S)
     - PACKAGE_NAME="web-build"
     - echo "Uploading package ${PACKAGE_NAME} version ${VERSION}"
-    - curl --header "JOB-TOKEN: ${CI_JOB_TOKEN}" --upload-file release.tar.gz "${CI_API_V4_URL}/projects/${CI_PROJECT_ID}/packages/generic/${PACKAGE_NAME}/${VERSION}/release.tar.gz"
+    - 'wget --method=PUT --header="JOB-TOKEN: ${CI_JOB_TOKEN}" --body-file=release.tar.gz "${CI_API_V4_URL}/projects/${CI_PROJECT_ID}/packages/generic/${PACKAGE_NAME}/${VERSION}/release.tar.gz"'
   rules:
     - if: $CI_COMMIT_BRANCH == "main"
