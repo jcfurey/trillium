@@ -17,6 +17,7 @@ import {
   McapLocalDataSourceFactory,
   SampleNuscenesDataSourceFactory,
   SharedRoot,
+  BuiltinExtensionLoader,
   IdbExtensionLoader,
 } from "@foxglove/studio-base";
 
@@ -40,6 +41,7 @@ export function WebRoot(props: {
     [],
   );
   const [extensionLoaders] = useState(() => [
+    new BuiltinExtensionLoader("/extensions/index.json"),
     new IdbExtensionLoader("org"),
     new IdbExtensionLoader("local"),
   ]);

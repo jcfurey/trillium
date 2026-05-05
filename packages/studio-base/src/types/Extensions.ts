@@ -4,7 +4,8 @@
 
 export type ExtensionNamespace =
   | "local" // Local extensions installed manually by the user.
-  | "org"; // Extensions managed remotely and provisioned by the organization.
+  | "org" // Extensions managed remotely and provisioned by the organization.
+  | "builtin"; // Read-only extensions baked into the served bundle by the operator.
 
 /**
  * Metadata describing an extension.
