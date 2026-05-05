@@ -1,7 +1,6 @@
 image: node:22
 
 stages:
-  - install
   - build
   - publish
 
@@ -18,22 +17,12 @@ cache:
     - node_modules/
     - .yarn/cache/
 
-install_dependencies:
-  stage: install
-  before_script:
-    - corepack enable
-  script:
-    - yarn install
-  artifacts:
-    paths:
-      - node_modules/
-    expire_in: 1 hour
-
 build_app:
   stage: build
   before_script:
     - corepack enable
   script:
+    - yarn install
     - apt update && apt install jq --no-install-recommends -y
     - yarn run web:build:prod
     - cd extensions && sh build_extensions.sh && cp -r release ../web/.webpack/extensions && rm -r release && cd ..
