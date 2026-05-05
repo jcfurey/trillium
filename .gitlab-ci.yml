@@ -3,7 +3,7 @@ image: node:22
 stages:
   - install
   - build
-  - release
+  - publish
 
 variables:
   GITLAB_TOKEN: $GIT_AUTH_TOKEN
