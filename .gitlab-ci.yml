@@ -43,19 +43,12 @@ build_app:
       - release.tar.gz
     expire_in: 1 hour
 
-release_app:
-  stage: release
-  image: registry.gitlab.com/gitlab-org/cli:latest
-  needs:
-    - job: build_app
-      artifacts: true
+publish_package:
+  stage: publish
   script:
-    - RELEASE_TAG="release-$(date +%Y%m%d%H%M%S)"
-    - RELEASE_NAME="Release $(date "+%Y-%m-%d %H:%M:%S")"
-    - echo "Creating $RELEASE_TAG"
-    - glab auth login --job-token "$CI_JOB_TOKEN" --hostname "$CI_SERVER_HOST"
-    - glab config set telemetry false
-    - glab release create $RELEASE_TAG --name "$RELEASE_NAME" --notes "Automated release created at $(date "+%Y-%m-%d %H:%M:%S")" release.tar.gz
-
+    - VERSION=$(date +%Y%m%d%H%M%S)
+    - PACKAGE_NAME="web-build"
+    - echo "Uploading package ${PACKAGE_NAME} version ${VERSION}"
+    - curl --header "JOB-TOKEN: ${CI_JOB_TOKEN}" --upload-file release.tar.gz "${CI_API_V4_URL}/projects/${CI_PROJECT_ID}/packages/generic/${PACKAGE_NAME}/${VERSION}/release.tar.gz"
   rules:
     - if: $CI_COMMIT_BRANCH == "main"
