@@ -4,6 +4,3 @@
 [submodule "extensions/foxglove-3d-tiles"]
 	path = extensions/foxglove-3d-tiles
 	url = https://github.com/kubojion/foxglove-3d-tiles.git
-[submodule "extensions/cloudini"]
-	path = extensions/cloudini
-	url = https://github.com/facontidavide/cloudini.git
