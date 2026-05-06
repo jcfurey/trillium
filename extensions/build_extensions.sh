@@ -1,6 +1,6 @@
 #!/bin/bash
 
-current_dir=$(pwd)
+extensions_dir=$(pwd)
 mkdir release
 
 cp registry.json release/registry.json
@@ -35,7 +35,7 @@ do
     PACKAGE=$(ls | grep .foxe)
 
     # Move it up into release directory
-    cp "$PACKAGE" ../release/"$PACKAGE"
+    cp "$PACKAGE" ${extensions_dir}/release/"$PACKAGE"
 
     PACKAGE_ID="$(jq -r .publisher package.json).$(jq -r .name package.json)"
     PACKAGE_NAME=$(jq -r .name package.json)
@@ -76,8 +76,8 @@ do
          foxe: $foxe,
          keywords: $keywords
        }]
-       ' ../release/registry.json > ../release/registry.tmp \
-       && mv ../release/registry.tmp ../release/registry.json
+       ' ${extensions_dir}/release/registry.json > ${extensions_dir}/release/registry.tmp \
+       && mv ${extensions_dir}/release/registry.tmp ${extensions_dir}/release/registry.json
 
     git reset --hard
     git clean -fd
