@@ -448,8 +448,15 @@ function createGeometry(
   cameraModel: PinholeCameraModel,
   settings: ImageRenderableSettings,
 ): THREE.PlaneGeometry {
-  const WIDTH_SEGMENTS = 10;
-  const HEIGHT_SEGMENTS = 10;
+  // Equirectangular images wrap onto a curved (cylindrical/spherical) surface,
+  // so the default 10x10 grid is far too coarse — the cylinder visibly facets.
+  // 128x32 keeps the mesh smooth (~2.8° per circumferential segment) at any
+  // standard Ouster mode up to 4096x256, while staying cheap (4257 vertices,
+  // built once per CameraInfo). Pinhole / plumb_bob images are tangent planes;
+  // the original 10x10 is plenty for those.
+  const isEquirect = cameraModel.distortion_model === "equirectangular";
+  const WIDTH_SEGMENTS = isEquirect ? 128 : 10;
+  const HEIGHT_SEGMENTS = isEquirect ? 32 : 10;
 
   const width = cameraModel.width;
   const height = cameraModel.height;
