@@ -1,13 +1,32 @@
-#!/bin/sh
+#!/bin/bash
 
 current_dir=$(pwd)
-mkdir release
+# mkdir release
 
-cp registry.json release/registry.json
+# cp registry.json release/registry.json
 
 git submodule -q foreach pwd | grep extensions | while IFS= read -r i
 do
     cd "$i" || exit 1
+
+    # Initialize the array
+    mapfile -d $'\0' package_paths < <(find $(pwd) -name "package.json" -print0)
+
+    foxglove_extension_path=''
+    for path in ${package_paths[@]}; do
+        # Verify the array contents
+        printf '%s\n' "$(dirname ${path})"
+        is_foxglove_extension=$(jq '(.devDependencies // {}) | keys | any(startswith("@foxglove/extension"))' ${path})
+
+        if [[ "${is_foxglove_extension}" == 'true' ]]; then
+            foxglove_extension_path=${path}
+        fi
+    done
+
+    if [[ "${is_foxglove_extension}" == '' ]]; then
+        echo "No foxglove extension found in $i"
+        continue
+    fi;
 
     touch CHANGELOG.md
     npm install
