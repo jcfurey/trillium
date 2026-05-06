@@ -1,9 +1,9 @@
 #!/bin/bash
 
 current_dir=$(pwd)
-# mkdir release
+mkdir release
 
-# cp registry.json release/registry.json
+cp registry.json release/registry.json
 
 git submodule -q foreach pwd | grep extensions | while IFS= read -r i
 do
