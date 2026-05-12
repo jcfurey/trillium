@@ -5,7 +5,7 @@
 import { existsSync } from "fs";
 import { mkdir, readdir, readFile, rm, writeFile } from "fs/promises";
 import JSZip from "jszip";
-import { dirname, join as pathJoin } from "path";
+import { dirname, join as pathJoin, resolve as pathResolve, sep as pathSep } from "path";
 
 import Logger from "@foxglove/log";
 
@@ -153,20 +153,36 @@ export async function installExtension(
   // Build the extension folder name based on package.json fields
   const dir = getPackageDirname(pkgJson);
 
-  // Delete any previous installation and create the extension folder
+  // Resolve and validate every archive entry's destination before touching the filesystem.
+  // A malicious .foxe could contain entries like "../../../../etc/cron.d/evil" and pathJoin
+  // would happily normalize them outside the install directory (Zip Slip; CVE-2018-1002200
+  // family). Validate first so a rejection doesn't leave a half-extracted directory behind.
   const extensionBaseDir = pathJoin(rootFolder, dir);
+  const resolvedBase = pathResolve(extensionBaseDir);
+  const baseWithSep = resolvedBase.endsWith(pathSep) ? resolvedBase : resolvedBase + pathSep;
+  const planned: { destPath: string; zipObj: JSZip.JSZipObject }[] = [];
+  for (const [relPath, zipObj] of Object.entries(archive.files)) {
+    const destPath = pathResolve(extensionBaseDir, relPath);
+    if (destPath !== resolvedBase && !destPath.startsWith(baseWithSep)) {
+      throw new Error(
+        `Extension archive contains an entry that escapes its install directory: ${relPath}`,
+      );
+    }
+    planned.push({ destPath, zipObj });
+  }
+
+  // Delete any previous installation and create the extension folder
   await rm(extensionBaseDir, { recursive: true, force: true });
   await mkdir(extensionBaseDir, { recursive: true });
 
   // Unpack all files into the extension folder
-  for (const [relPath, zipObj] of Object.entries(archive.files)) {
-    const filePath = pathJoin(extensionBaseDir, relPath);
+  for (const { destPath, zipObj } of planned) {
     if (zipObj.dir) {
-      await mkdir(dirname(filePath), { recursive: true });
+      await mkdir(dirname(destPath), { recursive: true });
     } else {
       const fileData = await zipObj.async("uint8array");
-      await mkdir(dirname(filePath), { recursive: true });
-      await writeFile(filePath, fileData);
+      await mkdir(dirname(destPath), { recursive: true });
+      await writeFile(destPath, fileData);
     }
   }
 

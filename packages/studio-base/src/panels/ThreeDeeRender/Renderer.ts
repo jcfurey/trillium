@@ -13,7 +13,7 @@ import { v4 as uuidv4 } from "uuid";
 import { ObjectPool } from "@foxglove/den/collection";
 import Logger from "@foxglove/log";
 import { Time, fromNanoSec, isLessThan, toNanoSec } from "@foxglove/rostime";
-import type { SceneUpdate } from "@foxglove/schemas";
+import type { FrameTransform, FrameTransforms, SceneUpdate } from "@foxglove/schemas";
 import {
   Immutable,
   MessageEvent,
@@ -58,9 +58,13 @@ import { SettingsManager, SettingsTreeEntry } from "./SettingsManager";
 import { SharedGeometry } from "./SharedGeometry";
 import { CameraState } from "./camera";
 import { DARK_OUTLINE, LIGHT_OUTLINE, stringToRgb } from "./color";
+import { FRAME_TRANSFORMS_DATATYPES, FRAME_TRANSFORM_DATATYPES } from "./foxglove";
 import { DetailLevel, msaaSamples } from "./lod";
 import {
-  normalizeTFMessage
+  normalizeFrameTransform,
+  normalizeFrameTransforms,
+  normalizeTFMessage,
+  normalizeTransformStamped,
 } from "./normalizeMessages";
 import { CameraStateSettings } from "./renderables/CameraStateSettings";
 import { ImageMode } from "./renderables/ImageMode/ImageMode";
@@ -72,6 +76,8 @@ import {
   MarkerArray,
   Quaternion,
   TFMessage,
+  TF_DATATYPES,
+  TRANSFORM_STAMPED_DATATYPES,
   TransformStamped,
   Vector3,
 } from "./ros";
@@ -633,11 +639,26 @@ export class Renderer extends EventEmitter<RendererEvents> implements IRenderer 
     const config = this.config;
     const preloadTransforms = config.scene.transforms?.enablePreloading ?? true;
     // Internal handlers for TF messages to update the transform tree
-    this.#addTopicSubscription("/tf", {
+    this.#addSchemaSubscriptions(FRAME_TRANSFORM_DATATYPES, {
+      handler: this.#handleFrameTransform,
+      shouldSubscribe: () => true,
+      preload: preloadTransforms,
+    });
+    this.#addSchemaSubscriptions(FRAME_TRANSFORMS_DATATYPES, {
+      handler: this.#handleFrameTransforms,
+      shouldSubscribe: () => true,
+      preload: preloadTransforms,
+    });
+    this.#addSchemaSubscriptions(TF_DATATYPES, {
       handler: this.#handleTFMessage,
       shouldSubscribe: () => true,
-      preload: preloadTransforms
-    })
+      preload: preloadTransforms,
+    });
+    this.#addSchemaSubscriptions(TRANSFORM_STAMPED_DATATYPES, {
+      handler: this.#handleTransformStamped,
+      shouldSubscribe: () => true,
+      preload: preloadTransforms,
+    });
     this.off("resetAllFramesCursor", this.#clearTransformTree);
     if (preloadTransforms) {
       this.on("resetAllFramesCursor", this.#clearTransformTree);
@@ -994,6 +1015,14 @@ export class Renderer extends EventEmitter<RendererEvents> implements IRenderer 
   public addCoordinateFrame(frameId: string): void {
     const normalizedFrameId = this.normalizeFrameId(frameId);
     if (normalizedFrameId.length === 0) {
+      // ROS 2 (REP-105) requires non-empty frame_ids on every header. A flood of empties from a
+      // misbehaving publisher would otherwise be silently dropped here, so surface a single
+      // problem entry that the user can act on.
+      this.settings.errors.add(
+        ["transforms"],
+        ADD_TRANSFORM_ERROR,
+        `Received an empty frame_id (REP-105 requires a non-empty frame on every header)`,
+      );
       return;
     }
     if (!this.transformTree.hasFrame(normalizedFrameId)) {
@@ -1001,6 +1030,24 @@ export class Renderer extends EventEmitter<RendererEvents> implements IRenderer 
       this.coordinateFrameList = this.transformTree.frameList();
       // log.debug(`Added coordinate frame "${normalizedFrameId}"`);
       this.emit("transformTreeUpdated", this);
+    }
+  }
+
+  #addFrameTransform(transform: FrameTransform): void {
+    const parentId = transform.parent_frame_id;
+    const childId = transform.child_frame_id;
+    try {
+      const stamp = toNanoSec(transform.timestamp);
+      const t = transform.translation;
+      const q = transform.rotation;
+
+      this.addTransform(parentId, childId, stamp, t, q);
+    } catch (err) {
+      this.settings.errors.add(
+        ["transforms"],
+        ADD_TRANSFORM_ERROR,
+        `Error adding transform for frame ${childId}: ${err.message}`,
+      );
     }
   }
 
@@ -1259,14 +1306,32 @@ export class Renderer extends EventEmitter<RendererEvents> implements IRenderer 
     this.emit("renderablesClicked", selections, cursorCoords, this);
   };
 
+  #handleFrameTransform = ({ message }: MessageEvent<DeepPartial<FrameTransform>>): void => {
+    // foxglove.FrameTransform - Ingest this single transform into our TF tree
+    const transform = normalizeFrameTransform(message);
+    this.#addFrameTransform(transform);
+  };
+
+  #handleFrameTransforms = ({ message }: MessageEvent<DeepPartial<FrameTransforms>>): void => {
+    // foxglove.FrameTransforms - Ingest the list of transforms into our TF tree
+    const frameTransforms = normalizeFrameTransforms(message);
+    for (const transform of frameTransforms.transforms) {
+      this.#addFrameTransform(transform);
+    }
+  };
+
   #handleTFMessage = ({ message }: MessageEvent<DeepPartial<TFMessage>>): void => {
     // tf2_msgs/TFMessage - Ingest the list of transforms into our TF tree
     const tfMessage = normalizeTFMessage(message);
-    console.log("TFMessage");
-    console.warn(message);
     for (const tf of tfMessage.transforms) {
       this.#addTransformMessage(tf);
     }
+  };
+
+  #handleTransformStamped = ({ message }: MessageEvent<DeepPartial<TransformStamped>>): void => {
+    // geometry_msgs/TransformStamped - Ingest this single transform into our TF tree
+    const tf = normalizeTransformStamped(message);
+    this.#addTransformMessage(tf);
   };
 
   #handleTopicsAction = (action: SettingsTreeAction): void => {

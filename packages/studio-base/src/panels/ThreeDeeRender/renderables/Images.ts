@@ -28,7 +28,12 @@ import {
 import { getTopicMatchPrefix, sortPrefixMatchesToFront } from "./Images/topicPrefixMatching";
 import { cameraInfosEqual, normalizeCameraInfo } from "./projections";
 import type { AnyRendererSubscription, IRenderer } from "../IRenderer";
-import { PartialMessageEvent, SceneExtension, onlyLastByTopicMessage } from "../SceneExtension";
+import {
+  PartialMessage,
+  PartialMessageEvent,
+  SceneExtension,
+  onlyLastByTopicMessage,
+} from "../SceneExtension";
 import { SettingsTreeEntry } from "../SettingsManager";
 import {
   CAMERA_CALIBRATION_DATATYPES,
@@ -59,6 +64,7 @@ export type LayerSettingsImage = BaseSettings & {
 
 const DEFAULT_BITMAP_WIDTH = 512;
 const NO_CAMERA_INFO_ERR = "NoCameraInfo";
+const NORMALIZE_IMAGE_ERR = "NormalizeImage";
 const CAMERA_MODEL = "CameraModel";
 
 export class Images extends SceneExtension<ImageRenderable> {
@@ -284,20 +290,52 @@ export class Images extends SceneExtension<ImageRenderable> {
     return false;
   };
 
+  // Each handler wraps the synchronous normalize step in a try/catch so a single malformed
+  // image (e.g. data.length doesn't match step×height — see assertRawImageDataLength) surfaces
+  // as a per-topic settings error instead of bubbling out of the message subscription and
+  // breaking subsequent messages on this and other image topics.
+  #safeNormalize<TRaw, TNorm>(
+    messageEvent: PartialMessageEvent<TRaw>,
+    normalize: (msg: PartialMessage<TRaw>) => TNorm,
+  ): TNorm | undefined {
+    try {
+      const result = normalize(messageEvent.message);
+      this.renderer.settings.errors.removeFromTopic(messageEvent.topic, NORMALIZE_IMAGE_ERR);
+      return result;
+    } catch (err) {
+      const message = err instanceof Error ? err.message : String(err);
+      this.renderer.settings.errors.addToTopic(messageEvent.topic, NORMALIZE_IMAGE_ERR, message);
+      log.warn(`Image normalize failed on ${messageEvent.topic}: ${message}`);
+      return undefined;
+    }
+  }
+
   #handleRosRawImage = (messageEvent: PartialMessageEvent<RosImage>): void => {
-    this.handleImage(messageEvent, normalizeRosImage(messageEvent.message));
+    const image = this.#safeNormalize(messageEvent, normalizeRosImage);
+    if (image) {
+      this.handleImage(messageEvent, image);
+    }
   };
 
   #handleRosCompressedImage = (messageEvent: PartialMessageEvent<RosCompressedImage>): void => {
-    this.handleImage(messageEvent, normalizeRosCompressedImage(messageEvent.message));
+    const image = this.#safeNormalize(messageEvent, normalizeRosCompressedImage);
+    if (image) {
+      this.handleImage(messageEvent, image);
+    }
   };
 
   #handleRawImage = (messageEvent: PartialMessageEvent<RawImage>): void => {
-    this.handleImage(messageEvent, normalizeRawImage(messageEvent.message));
+    const image = this.#safeNormalize(messageEvent, normalizeRawImage);
+    if (image) {
+      this.handleImage(messageEvent, image);
+    }
   };
 
   #handleCompressedImage = (messageEvent: PartialMessageEvent<CompressedImage>): void => {
-    this.handleImage(messageEvent, normalizeCompressedImage(messageEvent.message));
+    const image = this.#safeNormalize(messageEvent, normalizeCompressedImage);
+    if (image) {
+      this.handleImage(messageEvent, image);
+    }
   };
 
   protected handleImage = (messageEvent: PartialMessageEvent<AnyImage>, image: AnyImage): void => {

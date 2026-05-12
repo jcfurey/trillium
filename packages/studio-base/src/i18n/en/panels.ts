@@ -15,6 +15,9 @@ export const panels = {
   imageDescription: "Display annotated images.",
   indicator: "Indicator",
   indicatorDescription: "Display a colored and/or textual indicator based on a threshold value.",
+  joyTeleop: "Joy Teleop",
+  joyTeleopDescription:
+    "Publish sensor_msgs/Joy from a connected gamepad or on-screen sticks.",
   log: "Log",
   logDescription: "Display logs by node and severity level.",
   map: "Map",
@@ -40,6 +43,9 @@ export const panels = {
   tableDescription: "Display topic messages in a tabular format.",
   teleop: "Teleop",
   teleopDescription: "Teleoperate a robot over a live connection.",
+  teleopStamped: "Teleop (Stamped)",
+  teleopStampedDescription:
+    "Teleoperate a robot over a live connection (publishes geometry_msgs/TwistStamped).",
   topicGraph: "Topic Graph",
   topicGraphDescription: "Display a graph of active nodes, topics, and services.",
   userScripts: "User Scripts",
