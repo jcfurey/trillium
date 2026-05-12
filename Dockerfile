@@ -21,6 +21,15 @@ FROM caddy:2.5.2-alpine
 WORKDIR /src
 COPY --from=build /src/web/.webpack ./
 
+# Built-in Foxglove extensions (.foxe + index.json) staged by the operator
+# under trillium/builtins/. BuiltinExtensionLoader fetches /extensions/index.json
+# on every page load and registers each .foxe automatically. The directory is
+# always present (gitkept) so this COPY never fails; if no .foxe files were
+# staged, only the README/.gitignore are copied and the loader logs an empty
+# manifest miss without breaking anything.
+COPY builtins/ /src/extensions/
+RUN rm -f /src/extensions/.gitignore /src/extensions/README.md
+
 EXPOSE 8080
 
 COPY <<EOF /etc/caddy/Caddyfile

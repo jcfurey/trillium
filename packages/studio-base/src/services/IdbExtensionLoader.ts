@@ -32,7 +32,7 @@ function qualifiedName(
       // in order to stay compatible with existing layouts.
       return info.displayName;
     case "org":
-      // For private registry we use namespace and package name.
+    case "builtin":
       return [namespace, publisher, info.name].join(":");
   }
 }
