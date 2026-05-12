@@ -993,16 +993,37 @@ function JoyTeleopPanel(props: JoyTeleopPanelProps): JSX.Element {
   const useVirtualRef = useRef(useVirtual);
   useVirtualRef.current = useVirtual;
 
-  // Apply the Space-armed manual override + virtual-deadman button
-  // synthesis on top of any base snapshot. Sticky-button transform must
-  // already have been applied to base.buttons by the caller (so manual
-  // override never re-toggles a sticky button).
+  // Apply the manual override + virtual-deadman button synthesis on top
+  // of any base snapshot. Sticky-button transform must already have been
+  // applied to base.buttons by the caller (so manual override never
+  // re-toggles a sticky button).
+  //
+  // `forceMerge` controls the gating:
+  //   false (default, publish path) — only emit override when armed; the
+  //     safety property that prevents a stray click from driving the robot.
+  //   true (visualizer path) — always merge override into the displayed
+  //     state so click-drag on the SVG shows up immediately, with no need
+  //     to arm first. Without this, a fresh user clicks a stick on a
+  //     no-pad panel, sees nothing, and concludes the panel is broken.
+  // Synthesized deadman is always gated on armed regardless: it represents
+  // a real button press, only meaningful when actually publishing.
   const applyArmedOverlay = useCallback(
-    (base: GamepadSnapshot | undefined): GamepadSnapshot | undefined => {
-      if (!armedRef.current) {
+    (base: GamepadSnapshot | undefined, forceMerge = false): GamepadSnapshot | undefined => {
+      const armed = armedRef.current;
+      if (!armed && !forceMerge) {
         return base;
       }
       const override = manualInput.getOverride();
+      if (!armed) {
+        // Visualizer-only path: skip the merge work when the user hasn't
+        // actually moved the manual sticks/sliders, so the no-override
+        // steady state stays a single ref read.
+        const hasOverride =
+          Object.keys(override.axes).length > 0 || Object.keys(override.buttons).length > 0;
+        if (!hasOverride) {
+          return base;
+        }
+      }
       const cfg = configRef.current;
       const dm = cfg.virtualDeadmanButton;
       const buttonsLen = Math.max(cfg.buttons, base?.buttons.length ?? 0, dm + 1);
@@ -1013,7 +1034,7 @@ function JoyTeleopPanel(props: JoyTeleopPanelProps): JSX.Element {
         Math.max(cfg.axes, base?.axes.length ?? 0),
         buttonsLen,
       );
-      if (dm >= 0 && dm < buttons.length) {
+      if (armed && dm >= 0 && dm < buttons.length) {
         buttons[dm] = 1;
       }
       return { name: base?.name ?? "Manual override", axes, buttons };
@@ -1026,16 +1047,19 @@ function JoyTeleopPanel(props: JoyTeleopPanelProps): JSX.Element {
   // sticky-toggled) so the operator can see exactly what the pad is
   // sending; sticky transforms only affect the published topics.
   const getVisualizerSnapshot = useCallback((): GamepadSnapshot | undefined => {
+    // forceMerge=true so click-drag on the SVG sticks shows up in the
+    // visualizer immediately, even when not armed. The publish loop still
+    // gates on armed (default forceMerge=false at its call site).
     if (useVirtualRef.current) {
-      return applyArmedOverlay(virtualRef.current?.getSnapshot());
+      return applyArmedOverlay(virtualRef.current?.getSnapshot(), true);
     }
     const snaps = gamepadListLiveRef.current.getSnapshot();
     if (snaps.length === 0) {
-      return applyArmedOverlay(undefined);
+      return applyArmedOverlay(undefined, true);
     }
     const idx = configRef.current.visualizerPadIndex;
     const clamped = Math.max(0, Math.min(idx, snaps.length - 1));
-    return applyArmedOverlay(padToGamepadSnapshot(snaps[clamped] as PadSnapshot));
+    return applyArmedOverlay(padToGamepadSnapshot(snaps[clamped] as PadSnapshot), true);
   }, [applyArmedOverlay]);
 
   // Advertise both topics independently. Joy's datatypes map is the same
