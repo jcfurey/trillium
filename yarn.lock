@@ -24053,6 +24053,27 @@ __metadata:
   languageName: node
   linkType: hard
 
+"trillium-joyteleop-extension@workspace:extensions/joyteleop":
+  version: 0.0.0-use.local
+  resolution: "trillium-joyteleop-extension@workspace:extensions/joyteleop"
+  dependencies:
+    "@foxglove/studio": "workspace:*"
+    "@foxglove/studio-base": "workspace:*"
+    "@foxglove/tsconfig": 2.0.0
+    "@types/react": 18.2.23
+    "@types/react-dom": 18.2.7
+    css-loader: 6.10.0
+    jszip: 3.10.1
+    react: 18.2.0
+    react-dom: 18.2.0
+    style-loader: 3.3.4
+    ts-loader: 9.4.4
+    typescript: 5.2.2
+    webpack: 5.102.1
+    webpack-cli: 6.0.1
+  languageName: unknown
+  linkType: soft
+
 "trillium@workspace:.":
   version: 0.0.0-use.local
   resolution: "trillium@workspace:."

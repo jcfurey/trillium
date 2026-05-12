@@ -7,8 +7,17 @@
   "license": "MPL-2.0",
   "private": true,
   "main": "./dist/extension.js",
-  "files": ["dist", "package.json", "README.md"],
-  "keywords": ["foxglove-extension", "teleop", "gamepad", "joystick"],
+  "files": [
+    "dist",
+    "package.json",
+    "README.md"
+  ],
+  "keywords": [
+    "foxglove-extension",
+    "teleop",
+    "gamepad",
+    "joystick"
+  ],
   "scripts": {
     "build": "webpack --mode production",
     "package": "node scripts/package-foxe.mjs"
