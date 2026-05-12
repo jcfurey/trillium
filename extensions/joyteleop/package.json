@@ -1,0 +1,34 @@
+{
+  "name": "trillium-joyteleop-extension",
+  "displayName": "JoyTeleop",
+  "description": "Gamepad teleop with multi-pad JoystickList wire format, sticky buttons, and rumble feedback.",
+  "publisher": "erdc-robotics",
+  "version": "1.0.0",
+  "license": "MPL-2.0",
+  "private": true,
+  "main": "./dist/extension.js",
+  "files": ["dist", "package.json", "README.md"],
+  "keywords": ["foxglove-extension", "teleop", "gamepad", "joystick"],
+  "scripts": {
+    "build": "webpack --mode production",
+    "package": "node scripts/package-foxe.mjs"
+  },
+  "dependencies": {
+    "@foxglove/studio": "workspace:*",
+    "@foxglove/studio-base": "workspace:*"
+  },
+  "devDependencies": {
+    "@foxglove/tsconfig": "2.0.0",
+    "@types/react": "18.2.23",
+    "@types/react-dom": "18.2.7",
+    "css-loader": "6.10.0",
+    "jszip": "3.10.1",
+    "react": "18.2.0",
+    "react-dom": "18.2.0",
+    "style-loader": "3.3.4",
+    "ts-loader": "9.4.4",
+    "typescript": "5.2.2",
+    "webpack": "5.102.1",
+    "webpack-cli": "6.0.1"
+  }
+}

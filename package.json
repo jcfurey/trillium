@@ -58,7 +58,8 @@
       "packages/*",
       "packages/@types/*",
       "web",
-      "benchmark"
+      "benchmark",
+      "extensions/joyteleop"
     ]
   },
   "resolutions": {
