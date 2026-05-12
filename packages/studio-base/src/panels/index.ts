@@ -10,7 +10,6 @@ import dataSourceInfoThumbnail from "./DataSourceInfo/thumbnail.png";
 import gaugeThumbnail from "./Gauge/thumbnail.png";
 import imageThumbnail from "./Image/thumbnail.png";
 import indicatorThumbnail from "./Indicator/thumbnail.png";
-import joyTeleopThumbnail from "./JoyTeleop/thumbnail.png";
 import logThumbnail from "./Log/thumbnail.png";
 import mapThumbnail from "./Map/thumbnail.png";
 import parametersThumbnail from "./Parameters/thumbnail.png";
@@ -80,13 +79,13 @@ export const getBuiltin: (t: TFunction<"panels">) => PanelInfo[] = (t) => [
     thumbnail: teleopThumbnail,
     module: async () => await import("./Teleop"),
   },
-  {
-    title: t("joyTeleop"),
-    type: "JoyTeleop",
-    description: t("joyTeleopDescription"),
-    thumbnail: joyTeleopThumbnail,
-    module: async () => await import("./JoyTeleop"),
-  },
+  // JoyTeleop is no longer registered here. The panel ships as a baked
+  // .foxe built from extensions/joyteleop/ and is auto-registered at
+  // runtime by BuiltinExtensionLoader (see /src/extensions/builtin/
+  // in the served image and packages/studio-web/src/WebRoot.tsx for
+  // the loader wiring). The source still lives at
+  // packages/studio-base/src/panels/JoyTeleop/ — the extension imports
+  // it via webpack alias so there is one source of truth.
   {
     title: t("teleopStamped"),
     type: "TeleopStamped",

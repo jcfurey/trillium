@@ -17,8 +17,6 @@ export const panels: Partial<TypeOptions["resources"]["panels"]> = {
   imageDescription: "显示带注释的图像。",
   indicator: "指示器",
   indicatorDescription: "基于阈值值显示彩色和/或文本指示器。",
-  joyTeleop: "Joy 远程操纵",
-  joyTeleopDescription: "从已连接的游戏手柄或屏幕摇杆发布 sensor_msgs/Joy。",
   log: "日志",
   logDescription: "按节点和严重程度级别显示日志。",
   map: "地图",

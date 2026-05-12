@@ -18,8 +18,6 @@ export const panels: Partial<TypeOptions["resources"]["panels"]> = {
   imageDescription: "注釈付きの画像を表示します。",
   indicator: "インジケーター",
   indicatorDescription: "閾値に基づいた色やテキストで表示されるインジケーターを表示します。",
-  joyTeleop: "Joy Teleop",
-  joyTeleopDescription: "ゲームパッドまたは画面上のスティックからsensor_msgs/Joyをパブリッシュします。",
   log: "ログ",
   logDescription: "ノードと重要度レベル別にログを表示します。",
   map: "地図",
