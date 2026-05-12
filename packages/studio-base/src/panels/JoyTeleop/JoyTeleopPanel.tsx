@@ -29,7 +29,7 @@ import {
 import { GamepadMimic } from "./GamepadMimic";
 import { useManualInput, mergeOverride } from "./useManualInput";
 import { VirtualJoystick, VirtualJoystickHandle } from "./VirtualJoystick";
-import { useGamepad, GamepadSnapshot } from "./useGamepad";
+import { useGamepad, GamepadSnapshot, ConnectedPadInfo } from "./useGamepad";
 
 type DisplayStyle = "mimic" | "list";
 
@@ -66,6 +66,10 @@ type Config = {
   deadzone: number;
   forceVirtual: boolean;
   displayStyle: DisplayStyle;
+  // "auto" = first connected pad (legacy behavior). Otherwise a Gamepad.id
+  // string; the hook resolves it to the lowest-index pad with that id.
+  // Persisting by id (not index) survives reconnect / browser restart.
+  selectedGamepadId: "auto" | string;
   heartbeat: {
     enabled: boolean;
     topic: string;
@@ -91,6 +95,7 @@ const DEFAULT_CONFIG: Config = {
   deadzone: 0.1,
   forceVirtual: false,
   displayStyle: "mimic",
+  selectedGamepadId: "auto",
   heartbeat: {
     enabled: false,
     topic: "/teleop/heartbeat",
@@ -176,6 +181,7 @@ function buildSettingsTree(
   config: Config,
   topics: readonly Topic[],
   status: string,
+  connectedPads: readonly ConnectedPadInfo[],
 ): SettingsTreeNodes {
   const joyTopics = topics
     .filter((t) => t.schemaName === "sensor_msgs/msg/Joy" || t.schemaName === "sensor_msgs/Joy")
@@ -347,6 +353,36 @@ function buildSettingsTree(
         value: config.displayStyle,
         options: DISPLAY_STYLE_OPTIONS,
       },
+      selectedGamepadId: {
+        label: "Joystick",
+        input: "select",
+        value: config.selectedGamepadId,
+        options: (() => {
+          const opts: Array<{ label: string; value: string }> = [
+            { label: "Auto (first connected)", value: "auto" },
+            ...connectedPads.map((p) => ({
+              // Disambiguate identical pads with the runtime index suffix;
+              // the persisted value is still the bare id.
+              label: `${p.id} [#${p.index}]`,
+              value: p.id,
+            })),
+          ];
+          // Keep the saved selection visible (and restorable) when its pad
+          // is currently unplugged — otherwise the select would silently
+          // snap to "auto" the moment the user opened the dropdown.
+          if (
+            config.selectedGamepadId !== "auto" &&
+            !connectedPads.some((p) => p.id === config.selectedGamepadId)
+          ) {
+            opts.push({
+              label: `${config.selectedGamepadId} (not connected)`,
+              value: config.selectedGamepadId,
+            });
+          }
+          return opts;
+        })(),
+        help: "Pick which connected gamepad to publish from. Auto = first one the browser enumerates.",
+      },
       status: { label: "Input", input: "string", value: status, readonly: true },
     },
     children: {
@@ -462,7 +498,7 @@ function JoyTeleopPanel(props: JoyTeleopPanelProps): JSX.Element {
     };
   });
 
-  const gamepad = useGamepad();
+  const gamepad = useGamepad(config.selectedGamepadId);
   const virtualRef = useRef<VirtualJoystickHandle | null>(null);
   const manualInput = useManualInput();
 
@@ -557,11 +593,16 @@ function JoyTeleopPanel(props: JoyTeleopPanelProps): JSX.Element {
   // the user-gesture wake-up). When true, the on-screen sticks take over
   // as the input source.
   const useVirtual = config.forceVirtual;
+  const sel = config.selectedGamepadId;
   const baseStatus = useVirtual
     ? "Virtual (on-screen)"
-    : gamepad.present
-    ? `Gamepad: ${gamepad.name ?? "connected"}`
-    : "Waiting for gamepad input";
+    : sel === "auto"
+    ? gamepad.present
+      ? `Gamepad [auto]: ${gamepad.name ?? "connected"}`
+      : "Waiting for gamepad input"
+    : gamepad.selectedConnected
+    ? `Gamepad [${sel}]: connected`
+    : `Gamepad [${sel}]: not connected`;
   const status =
     captureMode != undefined
       ? `${baseStatus}  •  Capturing ${captureMode.kind} → pub ${captureMode.kind} ${captureMode.nextIndex}`
@@ -738,10 +779,10 @@ function JoyTeleopPanel(props: JoyTeleopPanelProps): JSX.Element {
   useEffect(() => {
     context.updatePanelSettingsEditor({
       actionHandler: settingsActionHandler,
-      nodes: buildSettingsTree(config, topics, status),
+      nodes: buildSettingsTree(config, topics, status, gamepad.connectedPads),
     });
     saveState(config);
-  }, [config, context, saveState, settingsActionHandler, status, topics]);
+  }, [config, context, saveState, settingsActionHandler, status, topics, gamepad.connectedPads]);
 
   // Joy advertise + publish loop
   const { topic: joyTopic, publishRate } = config;
@@ -750,39 +791,71 @@ function JoyTeleopPanel(props: JoyTeleopPanelProps): JSX.Element {
   const useVirtualRef = useRef(useVirtual);
   useVirtualRef.current = useVirtual;
 
-  // Snapshot accessor used by both the publish loop and the visualizer.
-  // Manual override (click-drag on the SVG, trigger sliders) is gated by
-  // the Space-held arming flag — a virtual deadman so the user can't drive
-  // by accident with a stray click. While armed, the configured deadman
-  // button index is synthesized as pressed so teleop_twist_joy's gate
-  // releases (mirrors holding L1 on a real pad).
+  // Two snapshot accessors:
+  //
+  //   getViewSnapshot — fed to the visualizer (mimic / list). ALWAYS merges
+  //   manual overrides into the live pad reading so the user sees their
+  //   click-drag input reflected on the SVG immediately, with no need to
+  //   arm first. Without this, clicking a stick on a no-pad panel is
+  //   silent — the user sees no feedback and concludes the panel is broken.
+  //   Synthesized deadman is still gated on armed (it represents a real
+  //   button press, only meaningful when actually publishing).
+  //
+  //   getActiveSnapshot — fed to the publish loop. Only emits override
+  //   values while armed (Space held) — the safety property that prevents
+  //   a stray click from driving the robot. Not armed → publish what the
+  //   pad is doing (or nothing if no pad).
+  //
+  // Both share the same merge helper so the visualization and what would
+  // get published while armed are identical.
+  const buildMergedSnapshot = useCallback(
+    (synthesizeDeadman: boolean): GamepadSnapshot | undefined => {
+      const base = useVirtualRef.current
+        ? virtualRef.current?.getSnapshot()
+        : gamepadLiveRef.current.getSnapshot();
+      const override = manualInput.getOverride();
+      const hasOverride =
+        Object.keys(override.axes).length > 0 || Object.keys(override.buttons).length > 0;
+      if (!hasOverride) {
+        return base;
+      }
+      const cfg = configRef.current;
+      const dm = cfg.virtualDeadmanButton;
+      const buttonsLen = Math.max(cfg.buttons, base?.buttons.length ?? 0, dm + 1);
+      const { axes, buttons } = mergeOverride(
+        base?.axes,
+        base?.buttons,
+        override,
+        Math.max(cfg.axes, base?.axes.length ?? 0),
+        buttonsLen,
+      );
+      if (synthesizeDeadman && dm >= 0 && dm < buttons.length) {
+        buttons[dm] = 1;
+      }
+      return {
+        name: base?.name ?? "Manual override",
+        axes,
+        buttons,
+      };
+    },
+    [manualInput],
+  );
+
+  const getViewSnapshot = useCallback(
+    () => buildMergedSnapshot(armedRef.current),
+    [buildMergedSnapshot],
+  );
+
   const getActiveSnapshot = useCallback((): GamepadSnapshot | undefined => {
-    const base = useVirtualRef.current
-      ? virtualRef.current?.getSnapshot()
-      : gamepadLiveRef.current.getSnapshot();
     if (!armedRef.current) {
-      return base;
+      // Not armed → publish whatever the pad / virtual stick is producing
+      // directly. Manual overrides are visible in the UI but not emitted.
+      return useVirtualRef.current
+        ? virtualRef.current?.getSnapshot()
+        : gamepadLiveRef.current.getSnapshot();
     }
-    const override = manualInput.getOverride();
-    const cfg = configRef.current;
-    const dm = cfg.virtualDeadmanButton;
-    const buttonsLen = Math.max(cfg.buttons, base?.buttons.length ?? 0, dm + 1);
-    const { axes, buttons } = mergeOverride(
-      base?.axes,
-      base?.buttons,
-      override,
-      Math.max(cfg.axes, base?.axes.length ?? 0),
-      buttonsLen,
-    );
-    if (dm >= 0 && dm < buttons.length) {
-      buttons[dm] = 1;
-    }
-    return {
-      name: base?.name ?? "Manual override",
-      axes,
-      buttons,
-    };
-  }, [manualInput]);
+    return buildMergedSnapshot(true);
+  }, [buildMergedSnapshot]);
 
   useLayoutEffect(() => {
     if (!canPublish || !joyTopic) {
@@ -882,7 +955,7 @@ function JoyTeleopPanel(props: JoyTeleopPanelProps): JSX.Element {
             <VirtualJoystick ref={virtualRef} />
           ) : config.displayStyle === "mimic" ? (
             <GamepadMimic
-              getSnapshot={getActiveSnapshot}
+              getSnapshot={getViewSnapshot}
               preset={config.preset}
               deviceName={status}
               present={gamepad.present}
@@ -891,7 +964,7 @@ function JoyTeleopPanel(props: JoyTeleopPanelProps): JSX.Element {
             />
           ) : (
             <ControllerVisualizer
-              getSnapshot={getActiveSnapshot}
+              getSnapshot={getViewSnapshot}
               axesCount={config.axes}
               buttonsCount={config.buttons}
               axisLabels={config.axisLabels}
