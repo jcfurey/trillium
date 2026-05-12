@@ -16,6 +16,14 @@ RUN yarn install --immutable
 
 RUN yarn run web:build:prod
 
+# Build the JoyTeleop extension into a .foxe and write a manifest the
+# BuiltinExtensionLoader can fetch. The manifest is regenerated each time
+# from whatever .foxe files end up under /src/extensions/builtin/, so
+# adding more bundled extensions later only requires another COPY line +
+# an entry in the workspace's `files` list.
+RUN yarn workspace trillium-joyteleop-extension build && \
+    yarn workspace trillium-joyteleop-extension package
+
 # Release stage
 FROM caddy:2.5.2-alpine
 WORKDIR /src
@@ -39,6 +47,25 @@ COPY extensions/registry.json /registry.json
 # anything.
 COPY builtins/ /src/extensions/builtin/
 RUN rm -f /src/extensions/builtin/.gitignore /src/extensions/builtin/README.md
+
+# Add the JoyTeleop .foxe built in the previous stage. Other in-tree
+# extensions can plug into this same path with a sibling COPY --from=build.
+COPY --from=build /src/extensions/joyteleop/dist/*.foxe /src/extensions/builtin/
+
+# Regenerate index.json from whatever .foxe files actually landed in
+# /src/extensions/builtin/. BuiltinExtensionLoader fetches this manifest
+# on every page load and registers each listed file. Doing the listing
+# at image-build time keeps the manifest in sync with the directory
+# contents — no human bookkeeping needed when a .foxe is added or removed.
+RUN cd /src/extensions/builtin && \
+    printf '[' > index.json && \
+    first=1 && for f in *.foxe; do \
+        if [ "$f" = "*.foxe" ]; then continue; fi; \
+        if [ "$first" -eq 1 ]; then first=0; else printf ',' >> index.json; fi; \
+        printf '"%s"' "$f" >> index.json; \
+    done && \
+    printf ']' >> index.json && \
+    echo "Built /src/extensions/builtin/index.json:" && cat index.json && echo
 
 EXPOSE 8080
 
