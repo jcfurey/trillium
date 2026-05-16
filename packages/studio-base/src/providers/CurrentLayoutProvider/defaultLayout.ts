@@ -41,5 +41,5 @@ export const defaultLayout: LayoutData =
     },
     globalVariables: {},
     userNodes: {},
-    layout: "3D!18i6zy7"
+    layout: "3D!18i6zy7",
   } as const);

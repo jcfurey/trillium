@@ -14,9 +14,8 @@
 import { useId } from "react";
 import type * as React from "react";
 
-import { ControllerRendererProps } from "../gamepadTypes";
-
 import { DualSenseController } from "./DualSenseController";
+import { ControllerRendererProps } from "../gamepadTypes";
 
 // Classic DualShock 4 face-button palette. Used as the *idle* fill via
 // CSS variable scoping; the existing press-color blend in renderContext

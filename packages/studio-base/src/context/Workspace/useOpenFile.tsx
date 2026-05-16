@@ -4,7 +4,7 @@
 
 import path from "path";
 import { useCallback, useMemo } from "react";
-import { showOpenFilePicker } from 'show-open-file-picker';
+import { showOpenFilePicker } from "show-open-file-picker";
 
 import {
   IDataSourceFactory,

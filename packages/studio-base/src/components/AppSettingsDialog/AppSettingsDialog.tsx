@@ -144,9 +144,7 @@ const aboutItems = new Map<
     "contact",
     {
       subheader: "Contact",
-      links: [
-        { title: "Give feedback", url: "https://github.com/pdragy/trillium/discussions" },
-      ],
+      links: [{ title: "Give feedback", url: "https://github.com/pdragy/trillium/discussions" }],
     },
   ],
 ]);
@@ -255,9 +253,7 @@ export function AppSettingsDialog(
           >
             <Stack gap={2} alignItems="flex-start">
               <Stack direction="row" alignItems="center" gap={1}>
-                <Typography variant="body2">
-                  Trillium version {FOXGLOVE_STUDIO_VERSION}
-                </Typography>
+                <Typography variant="body2">Trillium version {FOXGLOVE_STUDIO_VERSION}</Typography>
                 <CopyButton
                   size="small"
                   getText={() => FOXGLOVE_STUDIO_VERSION?.toString() ?? ""}

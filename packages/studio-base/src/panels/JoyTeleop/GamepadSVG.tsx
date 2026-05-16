@@ -1,8 +1,11 @@
-// Copied from XENONFFM/foxglove-control-extension v1.0.0-beta.6 (MIT).
+// This Source Code Form is subject to the terms of the Mozilla Public
+// License, v2.0. If a copy of the MPL was not distributed with this
+// file, You can obtain one at http://mozilla.org/MPL/2.0/
+//
+// Adapted from XENONFFM/foxglove-control-extension v1.0.0-beta.6 (MIT).
 //   Copyright (c) 2024 Joshua Newans
 //   Copyright (c) 2022 Ryan Govostes
-// Incorporated into this MPL-2.0 panel; the upstream MIT terms continue
-// to apply to this file's content.
+// The upstream MIT terms continue to apply to this file's content.
 
 import type * as React from "react";
 
@@ -12,8 +15,8 @@ import {
   GenericController,
   XboxController,
 } from "./controllers";
-import { buildRenderContext, detectGamepadVisualType } from "./renderContext";
 import { ControllerDeadzoneSettings, GamepadState, GamepadVisualizationMode } from "./gamepadTypes";
+import { buildRenderContext, detectGamepadVisualType } from "./renderContext";
 
 export function GamepadSVG({
   gamepad,
@@ -21,7 +24,7 @@ export function GamepadSVG({
   preferredVisualType,
   deadzone,
 }: {
-  gamepad: GamepadState | null;
+  gamepad: GamepadState | ReactNull;
   visualMode?: GamepadVisualizationMode;
   preferredVisualType?: "xbox" | "dualsense" | "dualshock4";
   deadzone?: ControllerDeadzoneSettings;

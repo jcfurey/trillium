@@ -114,11 +114,9 @@ export class PinholeCameraModel {
       throw new Error(`K.length=${K.length}, expected 9`);
     }
     if (model === "equirectangular" && (K.length !== 9 || K[0] === 0 || K[4] === 0)) {
-      // projectPixelToEquirectRay divides by K[0] (fx) and K[4] (fy); both must be non-zero
+      // #projectPixelToEquirectRay divides by K[0] (fx) and K[4] (fy); both must be non-zero
       // or the per-pixel ray comes out NaN/Inf and the 3D panel renders garbage geometry.
-      throw new Error(
-        `Invalid K matrix for equirectangular projection (fx=${K[0]}, fy=${K[4]})`,
-      );
+      throw new Error(`Invalid K matrix for equirectangular projection (fx=${K[0]}, fy=${K[4]})`);
     }
     if (P.length !== 12) {
       throw new Error(`P.length=${P.length}, expected 12`);
@@ -344,7 +342,7 @@ export class PinholeCameraModel {
    */
   public projectPixelTo3dPlane(out: Vector3, pixel: Readonly<Vector2>): Vector3 {
     if (this.distortion_model === "equirectangular") {
-      return this.projectPixelToEquirectRay(out, pixel);
+      return this.#projectPixelToEquirectRay(out, pixel);
     }
 
     const { K } = this;
@@ -369,7 +367,7 @@ export class PinholeCameraModel {
    *   elevation = (cy - v) / fy   [radians, +up]
    * Returns a unit direction in the optical frame (+Z forward, +X right, +Y down).
    */
-  private projectPixelToEquirectRay(out: Vector3, pixel: Readonly<Vector2>): Vector3 {
+  #projectPixelToEquirectRay(out: Vector3, pixel: Readonly<Vector2>): Vector3 {
     const { K } = this;
     const fx = K[0];
     const fy = K[4];
@@ -398,7 +396,7 @@ export class PinholeCameraModel {
   public projectPixelTo3dRay(out: Vector3, pixel: Readonly<Vector2>): Vector3 {
     if (this.distortion_model === "equirectangular") {
       // Equirect plane projection already returns a unit vector.
-      return this.projectPixelToEquirectRay(out, pixel);
+      return this.#projectPixelToEquirectRay(out, pixel);
     }
 
     this.projectPixelTo3dPlane(out, pixel);

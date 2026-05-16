@@ -302,13 +302,13 @@ function WorkspaceContent(props: WorkspaceProps): JSX.Element {
     const items = new Map<RightSidebarItemKey, SidebarItem>([
       ["variables", { title: t("variables"), component: VariablesList }],
     ]);
-      if (PerformanceSidebarComponent) {
-        items.set("performance", {
-          title: t("performance"),
-          component: PerformanceSidebarComponent,
-        });
-      }
-      items.set("studio-logs-settings", { title: t("studioLogs"), component: StudioLogsSettings });
+    if (PerformanceSidebarComponent) {
+      items.set("performance", {
+        title: t("performance"),
+        component: PerformanceSidebarComponent,
+      });
+    }
+    items.set("studio-logs-settings", { title: t("studioLogs"), component: StudioLogsSettings });
     if (showEventsTab) {
       items.set("events", { title: t("events"), component: EventsList });
     }

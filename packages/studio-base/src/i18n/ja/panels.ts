@@ -19,7 +19,8 @@ export const panels: Partial<TypeOptions["resources"]["panels"]> = {
   indicator: "インジケーター",
   indicatorDescription: "閾値に基づいた色やテキストで表示されるインジケーターを表示します。",
   joyTeleop: "Joy Teleop",
-  joyTeleopDescription: "ゲームパッドまたは画面上のスティックからsensor_msgs/Joyをパブリッシュします。",
+  joyTeleopDescription:
+    "ゲームパッドまたは画面上のスティックからsensor_msgs/Joyをパブリッシュします。",
   log: "ログ",
   logDescription: "ノードと重要度レベル別にログを表示します。",
   map: "地図",
@@ -45,7 +46,8 @@ export const panels: Partial<TypeOptions["resources"]["panels"]> = {
   teleop: "Teleop",
   teleopDescription: "ライブ接続でロボットを操作します。",
   teleopStamped: "Teleop (Stamped)",
-  teleopStampedDescription: "ライブ接続でロボットを操作します（geometry_msgs/TwistStampedをパブリッシュ）。",
+  teleopStampedDescription:
+    "ライブ接続でロボットを操作します（geometry_msgs/TwistStampedをパブリッシュ）。",
   topicGraph: "トピックグラフ",
   topicGraphDescription: "アクティブなノード、トピック、サービスのグラフを表示します。",
   userScripts: "ユーザースクリプト",

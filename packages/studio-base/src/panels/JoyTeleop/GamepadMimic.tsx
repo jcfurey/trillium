@@ -11,11 +11,11 @@
 import { useEffect, useRef, useState } from "react";
 import { makeStyles } from "tss-react/mui";
 
-import type { ControllerPresetId } from "./controllerPresets";
 import { GamepadSVG } from "./GamepadSVG";
+import { TriggerSliderOverlay } from "./TriggerSliderOverlay";
+import type { ControllerPresetId } from "./controllerPresets";
 import type { GamepadState, GamepadVisualizationMode } from "./gamepadTypes";
 import { attachSvgInteraction } from "./svgInteraction";
-import { TriggerSliderOverlay } from "./TriggerSliderOverlay";
 import type { GamepadSnapshot } from "./useGamepad";
 import type { ManualInputApi } from "./useManualInput";
 
@@ -164,7 +164,7 @@ export function GamepadMimic({
   // After the SVG mounts, attach pointer handlers via event delegation.
   // The visual mode (xbox / dualsense / dualshock4 / generic) drives which
   // SVG component renders, so we re-bind whenever it changes.
-  const svgWrapRef = useRef<HTMLDivElement | null>(null);
+  const svgWrapRef = useRef<HTMLDivElement>(ReactNull);
   useEffect(() => {
     const wrap = svgWrapRef.current;
     if (!wrap) {
@@ -199,8 +199,8 @@ export function GamepadMimic({
       <div className={classes.header}>{deviceName ?? "Gamepad"}</div>
       {!present && (
         <div className={classes.hint}>
-          No gamepad detected — plug one in and press any button on it (with this
-          window focused) to wake the browser Gamepad API.
+          No gamepad detected — plug one in and press any button on it (with this window focused) to
+          wake the browser Gamepad API.
         </div>
       )}
       <div ref={svgWrapRef} className={classes.svgWrap}>
