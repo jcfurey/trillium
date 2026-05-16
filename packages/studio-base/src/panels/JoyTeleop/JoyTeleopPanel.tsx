@@ -19,6 +19,8 @@ import Stack from "@foxglove/studio-base/components/Stack";
 import ThemeProvider from "@foxglove/studio-base/theme/ThemeProvider";
 
 import { ControllerVisualizer } from "./ControllerVisualizer";
+import { GamepadMimic } from "./GamepadMimic";
+import { VirtualJoystick, VirtualJoystickHandle } from "./VirtualJoystick";
 import {
   CONTROLLER_PRESETS,
   ControllerPresetId,
@@ -26,10 +28,8 @@ import {
   identityMap,
   presetLabelsFor,
 } from "./controllerPresets";
-import { GamepadMimic } from "./GamepadMimic";
-import { useManualInput, mergeOverride } from "./useManualInput";
-import { VirtualJoystick, VirtualJoystickHandle } from "./VirtualJoystick";
 import { useGamepad, GamepadSnapshot, ConnectedPadInfo } from "./useGamepad";
+import { useManualInput, mergeOverride } from "./useManualInput";
 
 type DisplayStyle = "mimic" | "list";
 
@@ -69,7 +69,9 @@ type Config = {
   // "auto" = first connected pad (legacy behavior). Otherwise a Gamepad.id
   // string; the hook resolves it to the lowest-index pad with that id.
   // Persisting by id (not index) survives reconnect / browser restart.
-  selectedGamepadId: "auto" | string;
+  // "auto" sentinel is just a special-case string; type as string so TS doesn't
+  // collapse the literal union and we still document the contract here.
+  selectedGamepadId: string;
   heartbeat: {
     enabled: boolean;
     topic: string;
@@ -171,7 +173,7 @@ const BUTTON_LABEL_OPTIONS = [
 // up in the dropdown (settings-tree autocomplete only suggests from items;
 // any current free-form value is still kept as the field value).
 function mergeLabelOptions(current: string, base: readonly string[]): string[] {
-  if (base.includes(current as (typeof base)[number])) {
+  if (base.includes(current)) {
     return [...base];
   }
   return current ? [current, ...base] : [...base];
@@ -195,7 +197,7 @@ function buildSettingsTree(
   const axisLabelsNode: SettingsTreeNode = {
     label: "Axis labels",
     fields: Object.fromEntries(
-      new Array(config.axes).fill(0).map((_, i) => {
+      new Array(config.axes).fill(0).map((_unused, i) => {
         const value = config.axisLabels[i] ?? `A${i}`;
         return [
           String(i),
@@ -212,7 +214,7 @@ function buildSettingsTree(
   const buttonLabelsNode: SettingsTreeNode = {
     label: "Button labels",
     fields: Object.fromEntries(
-      new Array(config.buttons).fill(0).map((_, i) => {
+      new Array(config.buttons).fill(0).map((_unused, i) => {
         const value = config.buttonLabels[i] ?? `B${i}`;
         return [
           String(i),
@@ -237,7 +239,7 @@ function buildSettingsTree(
       { type: "action", id: "reset-axis-map", label: "Reset to identity", icon: "Settings" },
     ],
     fields: Object.fromEntries(
-      new Array(config.axes).fill(0).map((_, i) => [
+      new Array(config.axes).fill(0).map((_unused, i) => [
         String(i),
         {
           label: `Pub axis ${i} ← src`,
@@ -258,7 +260,7 @@ function buildSettingsTree(
       { type: "action", id: "reset-button-map", label: "Reset to identity", icon: "Settings" },
     ],
     fields: Object.fromEntries(
-      new Array(config.buttons).fill(0).map((_, i) => [
+      new Array(config.buttons).fill(0).map((_unused, i) => [
         String(i),
         {
           label: `Pub btn ${i} ← src`,
@@ -429,11 +431,7 @@ function applyDeadzone(
   return out;
 }
 
-function clipButtons(
-  values: readonly number[],
-  map: readonly number[],
-  length: number,
-): number[] {
+function clipButtons(values: readonly number[], map: readonly number[], length: number): number[] {
   const out = new Array<number>(length).fill(0);
   for (let i = 0; i < length; i++) {
     const src = map[i] ?? i;
@@ -483,6 +481,10 @@ function JoyTeleopPanel(props: JoyTeleopPanelProps): JSX.Element {
     // ts-essentials' DeepPartial widens arrays; lodash merge produces sparse
     // arrays when partial omits indices. Re-pad from the active preset so
     // the visualizer never sees `undefined` slots, and pad maps to identity.
+    // CONTROLLER_PRESETS[merged.preset] is typed as always-defined (preset is a literal union),
+    // but persisted user config can carry a stale id that no longer matches any preset key — the
+    // fallback is intentional.
+    // eslint-disable-next-line @typescript-eslint/no-unnecessary-condition
     const preset = CONTROLLER_PRESETS[merged.preset] ?? CONTROLLER_PRESETS[DEFAULT_PRESET];
     const { axisLabels, buttonLabels } = presetLabelsFor(preset.id, merged.axes, merged.buttons);
     return {
@@ -499,7 +501,7 @@ function JoyTeleopPanel(props: JoyTeleopPanelProps): JSX.Element {
   });
 
   const gamepad = useGamepad(config.selectedGamepadId);
-  const virtualRef = useRef<VirtualJoystickHandle | null>(null);
+  const virtualRef = useRef<VirtualJoystickHandle>(ReactNull);
   const manualInput = useManualInput();
 
   // Virtual-deadman arming. Space is the modifier key; we listen only
@@ -517,17 +519,12 @@ function JoyTeleopPanel(props: JoyTeleopPanelProps): JSX.Element {
       setArmedDisplay(false);
       return;
     }
-    const isTextInput = (target: EventTarget | null): boolean => {
+    const isTextInput = (target: EventTarget | ReactNull): boolean => {
       if (!(target instanceof HTMLElement)) {
         return false;
       }
       const tag = target.tagName;
-      return (
-        tag === "INPUT" ||
-        tag === "TEXTAREA" ||
-        tag === "SELECT" ||
-        target.isContentEditable === true
-      );
+      return tag === "INPUT" || tag === "TEXTAREA" || tag === "SELECT" || target.isContentEditable;
     };
     const onKeyDown = (e: KeyboardEvent) => {
       if (e.code !== "Space" || e.repeat) {
@@ -675,12 +672,14 @@ function JoyTeleopPanel(props: JoyTeleopPanelProps): JSX.Element {
         const { axisLabels, buttonLabels } = presetLabelsFor(next.preset, next.axes, next.buttons);
         next.axisLabels = new Array(next.axes)
           .fill("")
-          .map((_, i) => prev.axisLabels[i] ?? axisLabels[i] ?? `A${i}`);
+          .map((_unused, i) => prev.axisLabels[i] ?? axisLabels[i] ?? `A${i}`);
         next.buttonLabels = new Array(next.buttons)
           .fill("")
-          .map((_, i) => prev.buttonLabels[i] ?? buttonLabels[i] ?? `B${i}`);
-        next.axisMap = new Array(next.axes).fill(0).map((_, i) => prev.axisMap[i] ?? i);
-        next.buttonMap = new Array(next.buttons).fill(0).map((_, i) => prev.buttonMap[i] ?? i);
+          .map((_unused, i) => prev.buttonLabels[i] ?? buttonLabels[i] ?? `B${i}`);
+        next.axisMap = new Array(next.axes).fill(0).map((_unused, i) => prev.axisMap[i] ?? i);
+        next.buttonMap = new Array(next.buttons)
+          .fill(0)
+          .map((_unused, i) => prev.buttonMap[i] ?? i);
         return next;
       }
       const next = _.cloneDeep(prev);
@@ -809,6 +808,7 @@ function JoyTeleopPanel(props: JoyTeleopPanelProps): JSX.Element {
   // Both share the same merge helper so the visualization and what would
   // get published while armed are identical.
   const buildMergedSnapshot = useCallback(
+    // eslint-disable-next-line @foxglove/no-boolean-parameters
     (synthesizeDeadman: boolean): GamepadSnapshot | undefined => {
       const base = useVirtualRef.current
         ? virtualRef.current?.getSnapshot()

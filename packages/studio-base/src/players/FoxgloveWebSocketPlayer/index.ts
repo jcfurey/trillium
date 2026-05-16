@@ -169,13 +169,7 @@ export default class FoxgloveWebSocketPlayer implements Player {
   #parameterTypeByName = new Map<string, Parameter["type"]>();
   #messageSizeEstimateByTopic: Record<string, number> = {};
 
-  public constructor({
-    url,
-    sourceId,
-  }: {
-    url: string;
-    sourceId: string;
-  }) {
+  public constructor({ url, sourceId }: { url: string; sourceId: string }) {
     this.#url = url;
     this.#name = url;
     this.#sourceId = sourceId;
@@ -205,7 +199,10 @@ export default class FoxgloveWebSocketPlayer implements Player {
     this.#client = new FoxgloveClient({
       ws:
         typeof Worker !== "undefined"
-          ? new WorkerSocketAdapter(this.#url, [FoxgloveClient.SUPPORTED_SUBPROTOCOL, "foxglove.sdk.v1"])
+          ? new WorkerSocketAdapter(this.#url, [
+              FoxgloveClient.SUPPORTED_SUBPROTOCOL,
+              "foxglove.sdk.v1",
+            ])
           : new WebSocket(this.#url, [FoxgloveClient.SUPPORTED_SUBPROTOCOL, "foxglove.sdk.v1"]),
     });
 
@@ -602,7 +599,9 @@ export default class FoxgloveWebSocketPlayer implements Player {
               CURRENT_FRAME_MAXIMUM_SIZE_BYTES / 1_000_000
             ).toFixed(2)}MB) reached. Dropped ${indexToCutBefore} message${
               indexToCutBefore === 1 ? "" : "s"
-            } (~${(droppedBytes / 1_000_000).toFixed(2)}MB) covering receive-time ${fromTime} → ${toTime}. This accumulation can occur if the browser tab has been inactive.`,
+            } (~${(droppedBytes / 1_000_000).toFixed(
+              2,
+            )}MB) covering receive-time ${fromTime} → ${toTime}. This accumulation can occur if the browser tab has been inactive.`,
           });
         }
 

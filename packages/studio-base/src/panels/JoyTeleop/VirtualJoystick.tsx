@@ -132,7 +132,7 @@ type StickProps = {
 
 function AnalogStick({ label, onChange }: StickProps): JSX.Element {
   const { classes } = useStyles();
-  const areaRef = useRef<HTMLDivElement | null>(null);
+  const areaRef = useRef<HTMLDivElement>(ReactNull);
   const [pos, setPos] = useState<Vec2>(ZERO);
   const activePointerId = useRef<number | undefined>(undefined);
 
@@ -173,7 +173,7 @@ function AnalogStick({ label, onChange }: StickProps): JSX.Element {
   const onDown = useCallback(
     (e: ReactPointerEvent<HTMLDivElement>) => {
       e.preventDefault();
-      (e.target as Element).setPointerCapture?.(e.pointerId);
+      (e.target as Element).setPointerCapture(e.pointerId);
       activePointerId.current = e.pointerId;
       update(e.clientX, e.clientY);
     },
@@ -222,97 +222,106 @@ function AnalogStick({ label, onChange }: StickProps): JSX.Element {
   );
 }
 
-export const VirtualJoystick = forwardRef<VirtualJoystickHandle>(function VirtualJoystick(
-  _props,
-  ref,
-): JSX.Element {
-  const { classes, cx } = useStyles();
-  // Mutable input state; never re-renders by itself — the publish loop
-  // pulls via getSnapshot, the on-screen knobs/buttons re-render via
-  // their own local state.
-  const left = useRef<Vec2>(ZERO);
-  const right = useRef<Vec2>(ZERO);
-  const [pressed, setPressed] = useState<Set<number>>(() => new Set());
+export const VirtualJoystick = forwardRef<VirtualJoystickHandle>(
+  function VirtualJoystick(_props, ref): JSX.Element {
+    const { classes, cx } = useStyles();
+    // Mutable input state; never re-renders by itself — the publish loop
+    // pulls via getSnapshot, the on-screen knobs/buttons re-render via
+    // their own local state.
+    const left = useRef<Vec2>(ZERO);
+    const right = useRef<Vec2>(ZERO);
+    const [pressed, setPressed] = useState<Set<number>>(() => new Set());
 
-  const pressedRef = useRef(pressed);
-  pressedRef.current = pressed;
+    const pressedRef = useRef(pressed);
+    pressedRef.current = pressed;
 
-  useImperativeHandle(
-    ref,
-    () => ({
-      getSnapshot: (): GamepadSnapshot => {
-        const axes = [left.current.x, left.current.y, right.current.x, right.current.y, 0, 0, 0, 0];
-        // Up to 11 buttons (xpad layout). Only the 8 we expose can be set.
-        const buttons = new Array(11).fill(0);
-        for (const i of pressedRef.current) {
-          if (i >= 0 && i < buttons.length) {
-            buttons[i] = 1;
+    useImperativeHandle(
+      ref,
+      () => ({
+        getSnapshot: (): GamepadSnapshot => {
+          const axes = [
+            left.current.x,
+            left.current.y,
+            right.current.x,
+            right.current.y,
+            0,
+            0,
+            0,
+            0,
+          ];
+          // Up to 11 buttons (xpad layout). Only the 8 we expose can be set.
+          const buttons = new Array(11).fill(0);
+          for (const i of pressedRef.current) {
+            if (i >= 0 && i < buttons.length) {
+              buttons[i] = 1;
+            }
           }
+          return { name: VIRTUAL_NAME, axes, buttons };
+        },
+      }),
+      [],
+    );
+
+    const onLeft = useCallback((v: Vec2) => {
+      left.current = v;
+    }, []);
+    const onRight = useCallback((v: Vec2) => {
+      right.current = v;
+    }, []);
+
+    // eslint-disable-next-line @foxglove/no-boolean-parameters
+    const setButton = useCallback((idx: number, down: boolean) => {
+      setPressed((prev) => {
+        const next = new Set(prev);
+        if (down) {
+          next.add(idx);
+        } else {
+          next.delete(idx);
         }
-        return { name: VIRTUAL_NAME, axes, buttons };
-      },
-    }),
-    [],
-  );
+        return next;
+      });
+    }, []);
 
-  const onLeft = useCallback((v: Vec2) => {
-    left.current = v;
-  }, []);
-  const onRight = useCallback((v: Vec2) => {
-    right.current = v;
-  }, []);
-
-  const setButton = useCallback((idx: number, down: boolean) => {
-    setPressed((prev) => {
-      const next = new Set(prev);
-      if (down) {
-        next.add(idx);
-      } else {
-        next.delete(idx);
-      }
-      return next;
-    });
-  }, []);
-
-  return (
-    <Stack className={classes.root}>
-      <div className={classes.sticks}>
-        <AnalogStick label="Left (linear)" onChange={onLeft} />
-        <AnalogStick label="Right (angular)" onChange={onRight} />
-      </div>
-      <div className={classes.buttons}>
-        {BUTTON_LABELS.map((label) => {
-          const idx = BUTTON_INDEX[label];
-          const down = pressed.has(idx);
-          return (
-            <button
-              key={label}
-              type="button"
-              className={cx(classes.button, { pressed: down })}
-              onPointerDown={(e) => {
-                e.preventDefault();
-                (e.target as Element).setPointerCapture?.(e.pointerId);
-                setButton(idx, true);
-              }}
-              onPointerUp={(e) => {
-                e.preventDefault();
-                setButton(idx, false);
-              }}
-              onPointerCancel={() => {
-                setButton(idx, false);
-              }}
-              onPointerLeave={(e) => {
-                if ((e.buttons & 1) === 0) {
-                  return;
-                }
-                setButton(idx, false);
-              }}
-            >
-              {label}
-            </button>
-          );
-        })}
-      </div>
-    </Stack>
-  );
-});
+    return (
+      <Stack className={classes.root}>
+        <div className={classes.sticks}>
+          <AnalogStick label="Left (linear)" onChange={onLeft} />
+          <AnalogStick label="Right (angular)" onChange={onRight} />
+        </div>
+        <div className={classes.buttons}>
+          {BUTTON_LABELS.map((label) => {
+            const idx = BUTTON_INDEX[label];
+            const down = pressed.has(idx);
+            return (
+              <button
+                key={label}
+                type="button"
+                className={cx(classes.button, { pressed: down })}
+                onPointerDown={(e) => {
+                  e.preventDefault();
+                  (e.target as Element).setPointerCapture(e.pointerId);
+                  setButton(idx, true);
+                }}
+                onPointerUp={(e) => {
+                  e.preventDefault();
+                  setButton(idx, false);
+                }}
+                onPointerCancel={() => {
+                  setButton(idx, false);
+                }}
+                onPointerLeave={(e) => {
+                  if ((e.buttons & 1) === 0) {
+                    return;
+                  }
+                  setButton(idx, false);
+                }}
+              >
+                {label}
+              </button>
+            );
+          })}
+        </div>
+      </Stack>
+    );
+  },
+);

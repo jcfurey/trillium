@@ -919,7 +919,7 @@ export class Renderer extends EventEmitter<RendererEvents> implements IRenderer 
   }
 
   public updateControls(): void {
-      this.cameraHandler.updateControls();
+    this.cameraHandler.updateControls();
   }
 
   public canResetView(): boolean {
@@ -1046,7 +1046,9 @@ export class Renderer extends EventEmitter<RendererEvents> implements IRenderer 
       this.settings.errors.add(
         ["transforms"],
         ADD_TRANSFORM_ERROR,
-        `Error adding transform for frame ${childId}: ${err instanceof Error ? err.message : String(err)}`,
+        `Error adding transform for frame ${childId}: ${
+          err instanceof Error ? err.message : String(err)
+        }`,
       );
     }
   }
@@ -1064,7 +1066,9 @@ export class Renderer extends EventEmitter<RendererEvents> implements IRenderer 
       this.settings.errors.add(
         ["transforms"],
         ADD_TRANSFORM_ERROR,
-        `Error adding transform for frame ${normalizedChildId}: ${err instanceof Error ? err.message : String(err)}`,
+        `Error adding transform for frame ${normalizedChildId}: ${
+          err instanceof Error ? err.message : String(err)
+        }`,
       );
     }
   }
@@ -1538,7 +1542,6 @@ export class Renderer extends EventEmitter<RendererEvents> implements IRenderer 
       }
     });
   };
-
 }
 
 function queueMessage(

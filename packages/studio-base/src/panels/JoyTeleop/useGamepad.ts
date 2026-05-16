@@ -38,7 +38,7 @@ export type ConnectedPadInfo = {
 //                        changes, so the settings tree only rebuilds on
 //                        connect/disconnect, not every frame.
 //   selectedConnected  — true when `selector` resolved to a live pad
-export function useGamepad(selector: "auto" | string = "auto"): {
+export function useGamepad(selector: string = "auto"): {
   getSnapshot: () => GamepadSnapshot | undefined;
   present: boolean;
   name: string | undefined;
@@ -122,7 +122,7 @@ export function useGamepad(selector: "auto" | string = "auto"): {
         if (present) {
           setPresent(false);
         }
-        if (name !== undefined) {
+        if (name != undefined) {
           setName(undefined);
         }
       }

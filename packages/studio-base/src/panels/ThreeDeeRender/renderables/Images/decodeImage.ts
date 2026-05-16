@@ -55,6 +55,7 @@ const MIN_MAX_16_BIT = { minValue: 0, maxValue: 65535 };
  * Returns a tightly-packed Uint8Array (no row stride padding) and the new step (bytes per row,
  * which equals width since there's no padding).
  */
+// eslint-disable-next-line @foxglove/no-boolean-parameters
 function downsample16To8(
   data: Uint8Array,
   width: number,
