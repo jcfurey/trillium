@@ -132,7 +132,12 @@ export function useGamepad(selector: "auto" | string = "auto"): {
     return () => {
       cancelAnimationFrame(raf);
     };
-  }, [present, name, selector, selectedConnected]);
+    // `present`, `name`, `selectedConnected` are read inside the if-changed guards above only
+    // to decide whether to call setState — they're not closed-over data dependencies. Listing
+    // them in deps would tear down and restart the RAF loop on every connect/disconnect/
+    // select-change, dropping a poll frame each time.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [selector]);
 
   return {
     getSnapshot: () => ref.current,
