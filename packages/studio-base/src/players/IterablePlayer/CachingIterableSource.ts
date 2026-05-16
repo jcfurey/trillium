@@ -386,11 +386,16 @@ class CachingIterableSource<MessageType = unknown>
         // would falsely claim coverage of the regressed time range and prevent re-fetching it
         // from the source on the next read.
         if (cachingDisabledForBackwardsTime) {
-          // toNanoSec → Time conversion would round-trip; lastTime came from a real receiveTime
-          // so we can reconstruct it via the same subtract-1ns trick used in the forward path.
-          const lastSec = Number(lastTime / 1_000_000_000n);
-          const lastNsec = Number(lastTime % 1_000_000_000n);
-          block.end = subtract({ sec: lastSec, nsec: lastNsec }, { sec: 0, nsec: 1 });
+          // pendingIterResults was flushed into block.items in the backwards-time branch above,
+          // so block.items now includes messages at lastTime. block.end must be inclusive of
+          // lastTime — not lastTime-1ns — otherwise the next iterator call walks block.items
+          // (yielding the lastTime messages from cache), then advances readHead to
+          // block.end+1ns == lastTime and re-fetches them from the source, duplicating every
+          // message at exactly lastTime.
+          block.end = {
+            sec: Number(lastTime / 1_000_000_000n),
+            nsec: Number(lastTime % 1_000_000_000n),
+          };
         } else {
           block.end = sourceReadEnd;
 
