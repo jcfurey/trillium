@@ -121,15 +121,6 @@ const useStyles = makeStyles()((theme) => ({
     fontSize: 9,
     opacity: 0.6,
   },
-  empty: {
-    flex: "1 1 auto",
-    display: "flex",
-    alignItems: "center",
-    justifyContent: "center",
-    color: theme.palette.text.secondary,
-    fontSize: theme.typography.caption.fontSize,
-    userSelect: "none",
-  },
   hint: {
     padding: theme.spacing(0.75, 1),
     borderRadius: theme.shape.borderRadius,
@@ -155,9 +146,9 @@ export function ControllerVisualizer({
   // Refs to per-axis / per-button DOM nodes — we mutate them directly each
   // animation frame instead of going through React state, so a 60-Hz pad
   // doesn't trigger a full panel re-render every frame.
-  const axisFillRefs = useRef<Array<HTMLDivElement | null>>([]);
-  const axisValueRefs = useRef<Array<HTMLDivElement | null>>([]);
-  const buttonRefs = useRef<Array<HTMLDivElement | null>>([]);
+  const axisFillRefs = useRef<Array<HTMLDivElement | ReactNull>>([]);
+  const axisValueRefs = useRef<Array<HTMLDivElement | ReactNull>>([]);
+  const buttonRefs = useRef<Array<HTMLDivElement | ReactNull>>([]);
   const lastButtonState = useRef<number[]>([]);
 
   useEffect(() => {
@@ -194,7 +185,7 @@ export function ControllerVisualizer({
           lastButtonState.current[i] = pressed;
           const el = buttonRefs.current[i];
           if (el) {
-            if (pressed) {
+            if (pressed === 1) {
               el.classList.add(classes.buttonPressed);
             } else {
               el.classList.remove(classes.buttonPressed);
@@ -219,8 +210,8 @@ export function ControllerVisualizer({
 
       {!present && (
         <div className={classes.hint}>
-          No gamepad detected — plug one in and press any button on it (with this
-          window focused) to wake the browser Gamepad API.
+          No gamepad detected — plug one in and press any button on it (with this window focused) to
+          wake the browser Gamepad API.
         </div>
       )}
 
@@ -264,8 +255,8 @@ export function ControllerVisualizer({
 type RowProps = {
   index: number;
   label: string;
-  fillRefs: React.MutableRefObject<Array<HTMLDivElement | null>>;
-  valueRefs: React.MutableRefObject<Array<HTMLDivElement | null>>;
+  fillRefs: React.MutableRefObject<Array<HTMLDivElement | ReactNull>>;
+  valueRefs: React.MutableRefObject<Array<HTMLDivElement | ReactNull>>;
   classes: ReturnType<typeof useStyles>["classes"];
 };
 

@@ -1,3 +1,7 @@
+// This Source Code Form is subject to the terms of the Mozilla Public
+// License, v2.0. If a copy of the MPL was not distributed with this
+// file, You can obtain one at http://mozilla.org/MPL/2.0/
+//
 // Copied from XENONFFM/foxglove-control-extension v1.0.0-beta.6 (MIT).
 //   Copyright (c) 2024 Joshua Newans
 //   Copyright (c) 2022 Ryan Govostes
@@ -6,8 +10,8 @@
 
 import type * as React from "react";
 
-import { getStickMotionStroke, getStickPressFill } from "../renderContext";
 import { ControllerRendererProps } from "../gamepadTypes";
+import { getStickMotionStroke, getStickPressFill } from "../renderContext";
 
 export function DualSenseController({ ctx }: ControllerRendererProps): React.ReactElement {
   const leftStickBaseX = 861.7;

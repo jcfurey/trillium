@@ -49,8 +49,8 @@ export class BuiltinExtensionLoader implements ExtensionLoader {
     throw new Error("Builtin extensions are server-managed; rebuild the image to remove");
   }
 
-  #load(): Promise<BuiltinEntry[]> {
-    return (this.#cache ??= this.#fetchAll());
+  async #load(): Promise<BuiltinEntry[]> {
+    return await (this.#cache ??= this.#fetchAll());
   }
 
   async #fetchAll(): Promise<BuiltinEntry[]> {

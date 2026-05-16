@@ -16,8 +16,7 @@ export const panels = {
   indicator: "Indicator",
   indicatorDescription: "Display a colored and/or textual indicator based on a threshold value.",
   joyTeleop: "Joy Teleop",
-  joyTeleopDescription:
-    "Publish sensor_msgs/Joy from a connected gamepad or on-screen sticks.",
+  joyTeleopDescription: "Publish sensor_msgs/Joy from a connected gamepad or on-screen sticks.",
   log: "Log",
   logDescription: "Display logs by node and severity level.",
   map: "Map",

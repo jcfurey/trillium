@@ -38,7 +38,7 @@ export type ConnectedPadInfo = {
 //                        changes, so the settings tree only rebuilds on
 //                        connect/disconnect, not every frame.
 //   selectedConnected  — true when `selector` resolved to a live pad
-export function useGamepad(selector: "auto" | string = "auto"): {
+export function useGamepad(selector: string = "auto"): {
   getSnapshot: () => GamepadSnapshot | undefined;
   present: boolean;
   name: string | undefined;
@@ -122,7 +122,7 @@ export function useGamepad(selector: "auto" | string = "auto"): {
         if (present) {
           setPresent(false);
         }
-        if (name !== undefined) {
+        if (name != undefined) {
           setName(undefined);
         }
       }
@@ -132,7 +132,12 @@ export function useGamepad(selector: "auto" | string = "auto"): {
     return () => {
       cancelAnimationFrame(raf);
     };
-  }, [present, name, selector, selectedConnected]);
+    // `present`, `name`, `selectedConnected` are read inside the if-changed guards above only
+    // to decide whether to call setState — they're not closed-over data dependencies. Listing
+    // them in deps would tear down and restart the RAF loop on every connect/disconnect/
+    // select-change, dropping a poll frame each time.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [selector]);
 
   return {
     getSnapshot: () => ref.current,

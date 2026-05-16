@@ -117,10 +117,7 @@ type Pos = {
   y: number;
 };
 
-function findTriggerRect(
-  wrap: HTMLDivElement,
-  ids: readonly string[],
-): DOMRect | undefined {
+function findTriggerRect(wrap: HTMLDivElement, ids: readonly string[]): DOMRect | undefined {
   for (const id of ids) {
     // Use attribute selector — getElementById is document-scoped and may
     // return a node from another panel if the same id is reused.
@@ -147,11 +144,11 @@ function TriggerSlider({
   side,
   manualInput,
   getSnapshot,
-}: TriggerSliderProps): JSX.Element | null {
+}: TriggerSliderProps): JSX.Element | ReactNull {
   const { classes } = useStyles();
-  const fillRef = useRef<HTMLDivElement | null>(null);
-  const knobRef = useRef<HTMLDivElement | null>(null);
-  const sliderRef = useRef<HTMLDivElement | null>(null);
+  const fillRef = useRef<HTMLDivElement>(ReactNull);
+  const knobRef = useRef<HTMLDivElement>(ReactNull);
+  const sliderRef = useRef<HTMLDivElement>(ReactNull);
   const draggingRef = useRef<number | undefined>(undefined);
   const buttonIndex = TRIGGER_BUTTON_INDEX[side];
   // Latched value (last user-set position). Persists across pointerup so
@@ -197,7 +194,7 @@ function TriggerSlider({
       e.preventDefault();
       e.stopPropagation();
       const el = sliderRef.current;
-      el?.setPointerCapture?.(e.pointerId);
+      el?.setPointerCapture(e.pointerId);
       draggingRef.current = e.pointerId;
       const v = valueFromPointer(e);
       latchedRef.current = v;
@@ -238,7 +235,7 @@ function TriggerSlider({
   );
 
   if (!pos) {
-    return null;
+    return ReactNull;
   }
 
   return (

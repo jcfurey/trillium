@@ -314,10 +314,10 @@ export default function PanelSetup(props: Props): JSX.Element {
       <TimelineInteractionStateProvider>
         <MockCurrentLayoutProvider onAction={props.onLayoutAction}>
           <PanelStateContextProvider initialState={props.fixture?.panelState}>
-              <ExtensionCatalogProvider
-                loaders={[]}
-                mockMessageConverters={props.fixture?.messageConverters}
-              >
+            <ExtensionCatalogProvider
+              loaders={[]}
+              mockMessageConverters={props.fixture?.messageConverters}
+            >
               <ThemeProvider isDark={theme.palette.mode === "dark"}>
                 <UnconnectedPanelSetup {...props} />
               </ThemeProvider>
