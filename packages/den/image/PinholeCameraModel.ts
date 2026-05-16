@@ -113,6 +113,13 @@ export class PinholeCameraModel {
     if (K.length !== 0 && K.length !== 9) {
       throw new Error(`K.length=${K.length}, expected 9`);
     }
+    if (model === "equirectangular" && (K.length !== 9 || K[0] === 0 || K[4] === 0)) {
+      // projectPixelToEquirectRay divides by K[0] (fx) and K[4] (fy); both must be non-zero
+      // or the per-pixel ray comes out NaN/Inf and the 3D panel renders garbage geometry.
+      throw new Error(
+        `Invalid K matrix for equirectangular projection (fx=${K[0]}, fy=${K[4]})`,
+      );
+    }
     if (P.length !== 12) {
       throw new Error(`P.length=${P.length}, expected 12`);
     }
