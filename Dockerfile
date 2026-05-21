@@ -46,6 +46,42 @@ RUN mkdir -p /src/extensions/_built && \
         -not -path '*/_built/*' \
         -exec cp -v {} /src/extensions/_built/ \;
 
+# Mirror every remote-URL .foxe entry in the marketplace registry into
+# _mirrored/, then rewrite the foxe field to a relative path. Lets the
+# runtime stage serve the marketplace fully offline — no install-time
+# fetches to raw.githubusercontent.com. Each download is verified against
+# the sha256sum already baked into registry.json; on any failure we leave
+# the remote URL in place so behavior degrades to today's instead of
+# poisoning the registry.
+RUN apt-get update && apt-get install -y --no-install-recommends jq && \
+    rm -rf /var/lib/apt/lists/* && \
+    mkdir -p /src/extensions/_mirrored && \
+    cp /src/extensions/registry.json /src/extensions/_mirrored/registry.json && \
+    cd /src/extensions/_mirrored && \
+    jq -c '.[] | select(.foxe | test("^https?://"))' registry.json > /tmp/remote_entries.jsonl && \
+    while read -r entry; do \
+        id=$(echo "$entry" | jq -r '.id'); \
+        url=$(echo "$entry" | jq -r '.foxe'); \
+        expected=$(echo "$entry" | jq -r '.sha256sum'); \
+        foxe_name=$(basename "$url"); \
+        echo "[$id] fetching $url"; \
+        if ! curl -fsSL --retry 3 -o "$foxe_name" "$url"; then \
+            echo "[$id] download failed, leaving remote URL in registry"; \
+            rm -f "$foxe_name"; \
+            continue; \
+        fi; \
+        actual=$(sha256sum "$foxe_name" | awk '{print $1}'); \
+        if [ "$actual" != "$expected" ]; then \
+            echo "[$id] sha mismatch (expected $expected, got $actual), leaving remote URL"; \
+            rm -f "$foxe_name"; \
+            continue; \
+        fi; \
+        jq --arg id "$id" --arg path "extensions/$foxe_name" \
+           '(.[] | select(.id == $id) | .foxe) = $path' \
+           registry.json > registry.tmp && mv registry.tmp registry.json; \
+    done < /tmp/remote_entries.jsonl && \
+    rm -f /tmp/remote_entries.jsonl
+
 # Release stage
 FROM caddy:2.5.2-alpine
 WORKDIR /src
@@ -57,6 +93,11 @@ COPY --from=build /src/web/.webpack ./
 # IndexedDB. Each user picks what they want.
 COPY extensions/ extensions/
 COPY extensions/registry.json /registry.json
+
+# Overlay the mirrored .foxe blobs + rewritten registry.json from the
+# build stage. Files land at /src/extensions/<name>.foxe so the relative
+# extensions/<name>.foxe paths in the rewritten registry resolve locally.
+COPY --from=build /src/extensions/_mirrored/ /src/extensions/
 
 # Built-in Foxglove extensions (fleet-baked via BuiltinExtensionLoader).
 # Operator stages .foxe files + an index.json under trillium/builtins/;
