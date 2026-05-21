@@ -16,13 +16,35 @@ RUN yarn install --immutable
 
 RUN yarn run web:build:prod
 
-# Build the JoyTeleop extension into a .foxe and write a manifest the
-# BuiltinExtensionLoader can fetch. The manifest is regenerated each time
-# from whatever .foxe files end up under /src/extensions/builtin/, so
-# adding more bundled extensions later only requires another COPY line +
-# an entry in the workspace's `files` list.
+# Build every in-tree extension under extensions/ into a .foxe.
+# joyteleop is a yarn workspace (depends on @foxglove/studio via
+# workspace:*) so it's driven by yarn. The others are standalone npm
+# packages with their own lockfiles — installed in isolation so their
+# (often divergent) dep versions don't have to reconcile with the
+# trillium root.
 RUN yarn workspace trillium-joyteleop-extension build && \
     yarn workspace trillium-joyteleop-extension package
+
+RUN for d in /src/extensions/*/; do \
+        name=$(basename "$d"); \
+        [ "$name" = "joyteleop" ] && continue; \
+        [ -f "$d/package.json" ] || continue; \
+        node -e "process.exit(require('$d/package.json').scripts?.package?0:1)" \
+            2>/dev/null || { \
+            echo "==> Skipping $name (no \`package\` script)"; continue; }; \
+        echo "==> Building extension: $name"; \
+        (cd "$d" && npm install --no-audit --no-fund --loglevel=warn && \
+         npm run package); \
+    done
+
+# Stage every produced .foxe (some land at the package root via
+# foxglove-extension package, others under dist/ via custom packagers)
+# into a single dir so the runtime stage can copy them in one shot.
+RUN mkdir -p /src/extensions/_built && \
+    find /src/extensions -mindepth 2 -name '*.foxe' \
+        -not -path '*/node_modules/*' \
+        -not -path '*/_built/*' \
+        -exec cp -v {} /src/extensions/_built/ \;
 
 # Release stage
 FROM caddy:2.5.2-alpine
@@ -48,9 +70,12 @@ COPY extensions/registry.json /registry.json
 COPY builtins/ /src/extensions/builtin/
 RUN rm -f /src/extensions/builtin/.gitignore /src/extensions/builtin/README.md
 
-# Add the JoyTeleop .foxe built in the previous stage. Other in-tree
-# extensions can plug into this same path with a sibling COPY --from=build.
-COPY --from=build /src/extensions/joyteleop/dist/*.foxe /src/extensions/builtin/
+# In-tree extensions built in the previous stage. The build stage's
+# find step gathered every produced .foxe into _built/ so this is one
+# COPY regardless of how many extensions ship. Drop a new folder under
+# trillium/extensions/ with a package.json + `package` script and it'll
+# get picked up automatically — no Dockerfile edit required.
+COPY --from=build /src/extensions/_built/ /src/extensions/builtin/
 
 # Regenerate index.json from whatever .foxe files actually landed in
 # /src/extensions/builtin/. BuiltinExtensionLoader fetches this manifest
