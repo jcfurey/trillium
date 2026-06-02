@@ -12,7 +12,7 @@ import {
 } from "react";
 import { makeStyles } from "tss-react/mui";
 
-import Stack from "@foxglove/studio-base/components/Stack";
+import Stack from "../vendored/Stack";
 
 import type { GamepadSnapshot } from "./useGamepad";
 

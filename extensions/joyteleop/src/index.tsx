@@ -4,22 +4,16 @@
 
 // JoyTeleop Foxglove extension entry point.
 //
-// Wraps the existing in-tree JoyTeleopPanel (which is already written
-// against PanelExtensionContext, the public extension API) so it can ship
-// as a baked .foxe and be auto-registered by BuiltinExtensionLoader rather
-// than hard-coded into studio-base's panels/index.ts.
-//
-// At build time webpack inlines JoyTeleopPanel and its transitive deps
-// (studio-base internals, MUI, emotion, etc.) into a single bundle. At
-// runtime react / react-dom / @foxglove/studio are supplied by the host
-// page (see webpack.config.js externals) so the bundle stays interoperable
-// with whatever React version the host pins.
+// Self-contained: the panel and its dependencies live under src/ and the
+// bundle pulls in MUI/emotion/tss-react. react / react-dom / @foxglove/extension
+// are externalized (provided by the host at runtime — see webpack.config.js) so
+// the bundle stays interoperable with whatever React the host pins.
 
-import { ExtensionContext, PanelExtensionContext } from "@foxglove/studio";
+import { ExtensionContext, PanelExtensionContext } from "@foxglove/extension";
 import { StrictMode } from "react";
 import { createRoot } from "react-dom/client";
 
-import JoyTeleopPanel from "@foxglove/studio-base/panels/JoyTeleop/JoyTeleopPanel";
+import JoyTeleopPanel from "./panel/JoyTeleopPanel";
 
 function initJoyTeleopPanel(context: PanelExtensionContext): () => void {
   const root = createRoot(context.panelElement);

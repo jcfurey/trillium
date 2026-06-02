@@ -79,13 +79,9 @@ export const getBuiltin: (t: TFunction<"panels">) => PanelInfo[] = (t) => [
     thumbnail: teleopThumbnail,
     module: async () => await import("./Teleop"),
   },
-  // JoyTeleop is no longer registered here. The panel ships as a baked
-  // .foxe built from extensions/joyteleop/ and is auto-registered at
-  // runtime by BuiltinExtensionLoader (see /src/extensions/builtin/
-  // in the served image and packages/studio-web/src/WebRoot.tsx for
-  // the loader wiring). The source still lives at
-  // packages/studio-base/src/panels/JoyTeleop/ — the extension imports
-  // it via webpack alias so there is one source of truth.
+  // JoyTeleop is not a built-in panel. It ships as a self-contained
+  // marketplace extension under extensions/joyteleop/ (pulled in via the
+  // Add Extension dialog), so its source lives there, not here.
   {
     title: t("teleopStamped"),
     type: "TeleopStamped",

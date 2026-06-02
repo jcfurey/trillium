@@ -1,15 +1,16 @@
 {
-  "extends": "@foxglove/tsconfig/base",
+  "extends": "create-foxglove-extension/tsconfig/tsconfig.json",
   "include": ["./src/**/*"],
   "compilerOptions": {
+    "rootDir": "./src",
+    "lib": ["dom", "dom.iterable", "es2021"],
     "jsx": "react-jsx",
     "module": "esnext",
-    "moduleResolution": "node",
+    "moduleResolution": "bundler",
     "target": "es2020",
     "noEmit": true,
     "skipLibCheck": true,
-    "paths": {
-      "@foxglove/studio-base/*": ["../../packages/studio-base/src/*"]
-    }
+    "composite": false,
+    "declaration": false
   }
 }

@@ -13,10 +13,11 @@ import {
   SettingsTreeNode,
   SettingsTreeNodes,
   Topic,
-} from "@foxglove/studio";
-import EmptyState from "@foxglove/studio-base/components/EmptyState";
-import Stack from "@foxglove/studio-base/components/Stack";
-import ThemeProvider from "@foxglove/studio-base/theme/ThemeProvider";
+} from "@foxglove/extension";
+
+import EmptyState from "../vendored/EmptyState";
+import Stack from "../vendored/Stack";
+import ThemeProvider from "../vendored/ThemeProvider";
 
 import { ControllerVisualizer } from "./ControllerVisualizer";
 import {

@@ -1,73 +1,49 @@
 # JoyTeleop Foxglove extension
 
-Packages the in-tree `JoyTeleop` panel as a baked `.foxe` extension. The
-panel source lives at
-`packages/studio-base/src/panels/JoyTeleop/JoyTeleopPanel.tsx`; this
-workspace is a thin wrapper that registers it via the public
-`ExtensionContext.registerPanel` API.
+A self-contained Foxglove/Lichtblick panel for gamepad teleop: multi-pad
+`JoystickList` wire format, sticky buttons, and rumble feedback. It builds as a
+standalone `.foxe` with no dependency on the trillium source tree, so any
+Foxglove-compatible host can pull it in.
+
+## Layout
+
+```
+src/
+  index.tsx            Extension entry — registers the panel via ExtensionContext
+  panel/               The panel itself (JoyTeleopPanel + visualizers/controllers/hooks)
+  vendored/            Stack, EmptyState, ThemeProvider — self-contained copies so the
+                       panel depends only on @foxglove/extension + npm packages
+```
+
+The only Foxglove API dependency is the public `@foxglove/extension` package
+(externalized at runtime alongside `react`/`react-dom`). Everything else
+(MUI, emotion, tss-react, lodash-es, `@foxglove/rosmsg-msgs-common`, …) is a
+declared dependency bundled into `dist/extension.js`.
 
 ## Build
 
 ```sh
-yarn workspace trillium-joyteleop-extension build
-yarn workspace trillium-joyteleop-extension package
+npm install
+npm run package
 ```
 
-The first step bundles `src/index.tsx` (and its transitive deps) into
-`dist/extension.js`. The second zips that plus `package.json` into
-`dist/erdc-robotics.trillium-joyteleop-extension-1.0.0.foxe`.
+`package` runs a production webpack build then `foxglove-extension package`,
+producing `erdc-robotics.trillium-joyteleop-extension-1.0.0.foxe` in the package
+root. Use `npm run local-install` to build and install into a local Foxglove
+desktop app, or `npm run build` for a dev (unminified) bundle.
 
-## Where it lands at runtime
+## How it ships in trillium
 
-The trillium `Dockerfile` copies the built `.foxe` into
-`/src/extensions/builtin/` in the served image and regenerates
-`/src/extensions/builtin/index.json`.
-`BuiltinExtensionLoader` (configured in
-`packages/studio-web/src/WebRoot.tsx` to fetch
-`/extensions/builtin/index.json`) discovers it on every page load and
-auto-registers the panel with no per-user install step.
+The trillium `Dockerfile` builds this extension in isolation (the generic
+per-extension `npm install && npm run package` loop) and stages the produced
+`.foxe` into the served marketplace at `extensions/joyteleop.foxe`, listed in
+`extensions/registry.json`. It is an **opt-in marketplace extension** (pulled in
+via the Add Extension dialog), not a fleet-baked builtin — the `_built` builtin
+sweep explicitly skips it.
 
-## Why it's a wrapper, not a fork of the panel
+## Theme note
 
-Keeping the panel source under `packages/studio-base/src/panels/JoyTeleop`
-means:
-- The panel can still be edited via studio-base's normal dev workflow
-  (`yarn web:serve`) — see "Dev workflow" below.
-- Storybook stories at `index.stories.tsx` continue to work without
-  duplication.
-- Future contributors don't have to choose between two copies.
-
-The extension build inlines the panel via webpack alias
-(`@foxglove/studio-base` → `packages/studio-base/src`), so there's only
-ever one source-of-truth.
-
-## Dev workflow
-
-`yarn web:serve` does NOT load the .foxe — it serves the dev bundle
-directly without going through `BuiltinExtensionLoader`. After removing
-the in-tree panel registration from
-`packages/studio-base/src/panels/index.ts`, you have two options for
-local iteration:
-
-1. **Build the .foxe once and serve it from `web/.webpack`.** Webpack
-   dev server serves the `web/.webpack` directory, so dropping
-   `dist/erdc-robotics.trillium-joyteleop-extension-1.0.0.foxe` and an
-   `index.json` listing it under
-   `web/.webpack/extensions/builtin/` makes the dev server expose them
-   exactly the way the production caddy does.
-2. **Re-register the panel temporarily in `panels/index.ts`** while
-   actively editing JoyTeleop, then remove again before committing.
-
-For most tweaks, option 2 is faster. For end-to-end testing of the
-extension path, use option 1.
-
-## Bundle size
-
-The .foxe is large (~4 MB) because `JoyTeleopPanel` imports `Stack`,
-`EmptyState`, and `ThemeProvider` from `@foxglove/studio-base`, which
-in turn pull in MUI, emotion, and the theme palette. We accept the
-size for now because the panel code is unchanged from its in-tree form
-and the .foxe is shipped inside the trillium image (not over a
-bandwidth-constrained channel). If the size becomes a problem, replace
-the three studio-base helper imports with inline equivalents and
-re-measure.
+The panel renders into its own React root (`createRoot(context.panelElement)`),
+which does not inherit the host's MUI theme context. `vendored/ThemeProvider`
+supplies a self-contained MUI dark/light theme (plus the `typography.fontMonospace`
+token the panel uses) so styling and dark-mode switching work standalone.

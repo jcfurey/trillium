@@ -4,7 +4,7 @@
 
 import { useCallback, useEffect } from "react";
 
-import { MessageEvent, PanelExtensionContext } from "@foxglove/studio";
+import { MessageEvent, PanelExtensionContext } from "@foxglove/extension";
 
 import {
   FEEDBACK_TYPE_RUMBLE,
