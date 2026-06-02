@@ -144,11 +144,11 @@ function TriggerSlider({
   side,
   manualInput,
   getSnapshot,
-}: TriggerSliderProps): JSX.Element | ReactNull {
+}: TriggerSliderProps): JSX.Element | null {
   const { classes } = useStyles();
-  const fillRef = useRef<HTMLDivElement>(ReactNull);
-  const knobRef = useRef<HTMLDivElement>(ReactNull);
-  const sliderRef = useRef<HTMLDivElement>(ReactNull);
+  const fillRef = useRef<HTMLDivElement>(null);
+  const knobRef = useRef<HTMLDivElement>(null);
+  const sliderRef = useRef<HTMLDivElement>(null);
   const draggingRef = useRef<number | undefined>(undefined);
   const buttonIndex = TRIGGER_BUTTON_INDEX[side];
   // Latched value (last user-set position). Persists across pointerup so
@@ -235,7 +235,7 @@ function TriggerSlider({
   );
 
   if (!pos) {
-    return ReactNull;
+    return null;
   }
 
   return (

@@ -227,7 +227,7 @@ function applyAxisDeadzone(value: number, enabled: boolean, deadzone: number): n
 }
 
 export function buildRenderContext(
-  gamepad: GamepadState | ReactNull,
+  gamepad: GamepadState | null,
   deadzone?: ControllerDeadzoneSettings,
 ): RenderContext {
   const buttons = gamepad?.buttons ?? [];

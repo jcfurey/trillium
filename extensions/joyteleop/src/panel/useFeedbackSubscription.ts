@@ -111,7 +111,7 @@ function rumbleMatchingPads(fb: JoystickFeedbackMsg, live: (Gamepad | undefined)
     // it on all pads. Single try/catch covers both the missing-actuator
     // case and playEffect rejecting (e.g., not-allowed-without-gesture).
     try {
-      const actuator: GamepadHapticActuator | undefined = pad.vibrationActuator;
+      const actuator: GamepadHapticActuator | null = pad.vibrationActuator;
       if (actuator && typeof actuator.playEffect === "function") {
         void actuator.playEffect("dual-rumble", {
           duration,

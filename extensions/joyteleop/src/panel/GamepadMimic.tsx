@@ -164,7 +164,7 @@ export function GamepadMimic({
   // After the SVG mounts, attach pointer handlers via event delegation.
   // The visual mode (xbox / dualsense / dualshock4 / generic) drives which
   // SVG component renders, so we re-bind whenever it changes.
-  const svgWrapRef = useRef<HTMLDivElement>(ReactNull);
+  const svgWrapRef = useRef<HTMLDivElement>(null);
   useEffect(() => {
     const wrap = svgWrapRef.current;
     if (!wrap) {

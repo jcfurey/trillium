@@ -146,9 +146,9 @@ export function ControllerVisualizer({
   // Refs to per-axis / per-button DOM nodes — we mutate them directly each
   // animation frame instead of going through React state, so a 60-Hz pad
   // doesn't trigger a full panel re-render every frame.
-  const axisFillRefs = useRef<Array<HTMLDivElement | ReactNull>>([]);
-  const axisValueRefs = useRef<Array<HTMLDivElement | ReactNull>>([]);
-  const buttonRefs = useRef<Array<HTMLDivElement | ReactNull>>([]);
+  const axisFillRefs = useRef<Array<HTMLDivElement | null>>([]);
+  const axisValueRefs = useRef<Array<HTMLDivElement | null>>([]);
+  const buttonRefs = useRef<Array<HTMLDivElement | null>>([]);
   const lastButtonState = useRef<number[]>([]);
 
   useEffect(() => {
@@ -255,8 +255,8 @@ export function ControllerVisualizer({
 type RowProps = {
   index: number;
   label: string;
-  fillRefs: React.MutableRefObject<Array<HTMLDivElement | ReactNull>>;
-  valueRefs: React.MutableRefObject<Array<HTMLDivElement | ReactNull>>;
+  fillRefs: React.MutableRefObject<Array<HTMLDivElement | null>>;
+  valueRefs: React.MutableRefObject<Array<HTMLDivElement | null>>;
   classes: ReturnType<typeof useStyles>["classes"];
 };
 

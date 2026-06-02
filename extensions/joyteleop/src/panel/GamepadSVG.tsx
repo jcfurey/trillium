@@ -24,7 +24,7 @@ export function GamepadSVG({
   preferredVisualType,
   deadzone,
 }: {
-  gamepad: GamepadState | ReactNull;
+  gamepad: GamepadState | null;
   visualMode?: GamepadVisualizationMode;
   preferredVisualType?: "xbox" | "dualsense" | "dualshock4";
   deadzone?: ControllerDeadzoneSettings;

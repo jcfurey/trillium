@@ -132,7 +132,7 @@ type StickProps = {
 
 function AnalogStick({ label, onChange }: StickProps): JSX.Element {
   const { classes } = useStyles();
-  const areaRef = useRef<HTMLDivElement>(ReactNull);
+  const areaRef = useRef<HTMLDivElement>(null);
   const [pos, setPos] = useState<Vec2>(ZERO);
   const activePointerId = useRef<number | undefined>(undefined);
 

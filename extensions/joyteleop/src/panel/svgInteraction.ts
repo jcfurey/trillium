@@ -140,11 +140,11 @@ type ButtonPressState = {
 // given table. Returns the matching element + the table value. Stops at
 // the SVG root.
 function findIdHit<T>(
-  start: Element | ReactNull,
+  start: Element | null,
   root: Element,
   table: Record<string, T>,
 ): { el: Element; value: T } | undefined {
-  let el: Element | ReactNull = start;
+  let el: Element | null = start;
   while (el && el !== root) {
     const id = el.id.toLowerCase();
     if (id && id in table) {
@@ -193,7 +193,7 @@ export function attachSvgInteraction(svg: SVGSVGElement, manualInput: ManualInpu
   };
 
   const onPointerDown = (e: PointerEvent) => {
-    const target = e.target as Element | ReactNull;
+    const target = e.target as Element | null;
 
     // Stick first — if the user clicked on a stick group (which may also
     // contain inner buttons like LStickDot), prefer the stick interaction.
