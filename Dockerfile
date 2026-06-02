@@ -26,11 +26,12 @@ RUN yarn workspace trillium-joyteleop-extension build && \
     yarn workspace trillium-joyteleop-extension package
 
 # joyteleop ships as a marketplace extension (opt-in via the Add Extension
-# dialog), not a fleet-baked builtin. Stage its .foxe under the served root
-# as extensions/joyteleop.foxe (via the _mirrored overlay) so the relative
-# "foxe": "extensions/joyteleop.foxe" entry in registry.json resolves. The
-# _built builtin sweep below explicitly skips it to avoid a double panel
-# registration (BuiltinExtensionLoader + IdbExtensionLoader).
+# dialog), not a fleet-baked builtin. Stage its .foxe into the _mirrored
+# overlay as joyteleop.foxe so it serves at the root as extensions/joyteleop.foxe,
+# matching the relative "foxe": "extensions/joyteleop.foxe" entry in registry.json.
+# The _built builtin sweep below skips the whole _mirrored dir (marketplace-served,
+# never builtin-baked) — without that, this staged copy would be swept into
+# builtins and auto-registered, double-registering the panel.
 RUN mkdir -p /src/extensions/_mirrored && \
     cp /src/extensions/joyteleop/dist/*.foxe /src/extensions/_mirrored/joyteleop.foxe
 
@@ -53,6 +54,7 @@ RUN mkdir -p /src/extensions/_built && \
     find /src/extensions -mindepth 2 -name '*.foxe' \
         -not -path '*/node_modules/*' \
         -not -path '*/_built/*' \
+        -not -path '*/_mirrored/*' \
         -not -path '*/joyteleop/*' \
         -exec cp -v {} /src/extensions/_built/ \;
 
