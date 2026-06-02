@@ -249,9 +249,7 @@ export class ModelCache {
         // protocol allowlist used at the model entry point so a textures-pretending-to-be-mesh
         // attack can't exfiltrate a file:// path or call out to an arbitrary host.
         if (!isValidMeshUrl(textureUrl)) {
-          throw new Error(
-            `Texture protocol not in allowlist (${VALID_MESH_PROTOCOLS.join(", ")})`,
-          );
+          throw new Error(`Texture protocol not in allowlist (${VALID_MESH_PROTOCOLS.join(", ")})`);
         }
         if (this.#colladaTextureObjectUrls.has(textureUrl)) {
           continue;

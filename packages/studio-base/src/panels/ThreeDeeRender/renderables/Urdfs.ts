@@ -27,8 +27,8 @@ import { RenderableCylinder } from "./markers/RenderableCylinder";
 import { RenderableMeshResource } from "./markers/RenderableMeshResource";
 import { RenderableSphere } from "./markers/RenderableSphere";
 import { missingTransformMessage, MISSING_TRANSFORM } from "./transforms";
-import { isValidMeshUrl } from "../ModelCache";
 import type { AnyRendererSubscription, IRenderer } from "../IRenderer";
+import { isValidMeshUrl } from "../ModelCache";
 import { BaseUserData, Renderable } from "../Renderable";
 import { PartialMessageEvent, SceneExtension, onlyLastByTopicMessage } from "../SceneExtension";
 import { SettingsTreeEntry } from "../SettingsManager";
@@ -731,6 +731,7 @@ export class Urdfs extends SceneExtension<UrdfRenderable> {
     this.updateSettingsTree();
   };
 
+  // eslint-disable-next-line @foxglove/no-boolean-parameters
   #fetchUrdf(instanceId: string, url: string, allowFileProtocol = false): void {
     const renderable = this.renderables.get(instanceId);
     if (!renderable) {

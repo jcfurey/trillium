@@ -45,7 +45,6 @@ export const MAX_SUPPORTED_LAYOUT_VERSION = 1;
  * automatically restoring the current layout from LayoutStorage.
  */
 export default function CurrentLayoutProvider({ children }: React.PropsWithChildren): JSX.Element {
-
   const [mosaicId] = useState(() => uuidv4());
 
   const layoutStateListeners = useRef(new Set<(_: LayoutState) => void>());
@@ -195,7 +194,6 @@ export default function CurrentLayoutProvider({ children }: React.PropsWithChild
         const closedId = getNodeAtPath(payload.root, payload.path);
         // Deselect the removed panel
         setSelectedPanelIds((ids) => ids.filter((id) => id !== closedId));
-
       },
       splitPanel: (payload: SplitPanelPayload) => {
         performAction({ type: "SPLIT_PANEL", payload });

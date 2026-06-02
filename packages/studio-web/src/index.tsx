@@ -58,9 +58,7 @@ export async function main(getParams: () => Promise<MainParams> = async () => ({
   const root = createRoot(rootEl);
   root.render(
     <StrictMode>
-      <LogAfterRender>
-        {rootElement}
-      </LogAfterRender>
+      <LogAfterRender>{rootElement}</LogAfterRender>
     </StrictMode>,
   );
 }

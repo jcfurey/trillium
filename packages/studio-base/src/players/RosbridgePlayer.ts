@@ -118,13 +118,7 @@ export default class RosbridgePlayer implements Player {
   readonly #sourceId: string;
   #rosVersion: 1 | 2 | undefined;
 
-  public constructor({
-    url,
-    sourceId,
-  }: {
-    url: string;
-    sourceId: string;
-  }) {
+  public constructor({ url, sourceId }: { url: string; sourceId: string }) {
     this.#presence = PlayerPresence.INITIALIZING;
     this.#url = url;
     this.#start = fromMillis(Date.now());

@@ -1,3 +1,7 @@
+// This Source Code Form is subject to the terms of the Mozilla Public
+// License, v2.0. If a copy of the MPL was not distributed with this
+// file, You can obtain one at http://mozilla.org/MPL/2.0/
+//
 // Copied from XENONFFM/foxglove-control-extension v1.0.0-beta.6 (MIT).
 //   Copyright (c) 2024 Joshua Newans
 //   Copyright (c) 2022 Ryan Govostes
@@ -206,6 +210,7 @@ function clampDeadzone(value: number): number {
   return Math.max(0, Math.min(0.99, value));
 }
 
+// eslint-disable-next-line @foxglove/no-boolean-parameters
 function applyAxisDeadzone(value: number, enabled: boolean, deadzone: number): number {
   const clamped = clampAxis(value);
   if (!enabled || deadzone <= 0) {
@@ -222,7 +227,7 @@ function applyAxisDeadzone(value: number, enabled: boolean, deadzone: number): n
 }
 
 export function buildRenderContext(
-  gamepad: GamepadState | null,
+  gamepad: GamepadState | ReactNull,
   deadzone?: ControllerDeadzoneSettings,
 ): RenderContext {
   const buttons = gamepad?.buttons ?? [];

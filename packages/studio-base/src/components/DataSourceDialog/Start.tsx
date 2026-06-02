@@ -152,8 +152,7 @@ export default function Start(): JSX.Element {
 
   return (
     <Stack className={classes.grid}>
-      <header className={classes.header}>
-      </header>
+      <header className={classes.header}></header>
       <Stack className={classes.content}>
         <Stack gap={4}>
           <Stack gap={1}>

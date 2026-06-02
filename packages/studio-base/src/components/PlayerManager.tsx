@@ -111,8 +111,7 @@ export default function PlayerManager(props: PropsWithChildren<PlayerManagerProp
 
       // Sample sources don't need args or prompts to initialize
       if (foundSource.type === "sample") {
-        const newPlayer = foundSource.initialize({
-        });
+        const newPlayer = foundSource.initialize({});
 
         constructPlayers(newPlayer);
         return;
