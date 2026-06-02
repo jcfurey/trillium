@@ -640,5 +640,21 @@
       "ros",
       "wrench"
     ]
+  },
+  {
+    "id": "erdcrobotics.trillium-joyteleop-extension",
+    "name": "JoyTeleop",
+    "description": "Gamepad teleop with multi-pad JoystickList wire format, sticky buttons, and rumble feedback.",
+    "publisher": "erdc-robotics",
+    "license": "MPL-2.0",
+    "version": "1.0.0",
+    "foxe": "extensions/joyteleop.foxe",
+    "keywords": [
+      "foxglove",
+      "teleop",
+      "gamepad",
+      "joystick",
+      "ros2"
+    ]
   }
 ]

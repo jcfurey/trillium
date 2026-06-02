@@ -25,6 +25,15 @@ RUN yarn run web:build:prod
 RUN yarn workspace trillium-joyteleop-extension build && \
     yarn workspace trillium-joyteleop-extension package
 
+# joyteleop ships as a marketplace extension (opt-in via the Add Extension
+# dialog), not a fleet-baked builtin. Stage its .foxe under the served root
+# as extensions/joyteleop.foxe (via the _mirrored overlay) so the relative
+# "foxe": "extensions/joyteleop.foxe" entry in registry.json resolves. The
+# _built builtin sweep below explicitly skips it to avoid a double panel
+# registration (BuiltinExtensionLoader + IdbExtensionLoader).
+RUN mkdir -p /src/extensions/_mirrored && \
+    cp /src/extensions/joyteleop/dist/*.foxe /src/extensions/_mirrored/joyteleop.foxe
+
 RUN for d in /src/extensions/*/; do \
         name=$(basename "$d"); \
         [ "$name" = "joyteleop" ] && continue; \
@@ -44,6 +53,7 @@ RUN mkdir -p /src/extensions/_built && \
     find /src/extensions -mindepth 2 -name '*.foxe' \
         -not -path '*/node_modules/*' \
         -not -path '*/_built/*' \
+        -not -path '*/joyteleop/*' \
         -exec cp -v {} /src/extensions/_built/ \;
 
 # Mirror every remote-URL .foxe entry in the marketplace registry into
