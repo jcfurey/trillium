@@ -471,15 +471,20 @@ export default class RosbridgePlayer implements Player {
           return;
         }
         try {
-          const buffer = (message as { bytes: ArrayBuffer }).bytes;
-          if (!(buffer instanceof ArrayBuffer)) {
+          const buffer = (message as { bytes: ArrayBuffer | ArrayBufferView }).bytes;
+          let bytes: Uint8Array;
+          if (buffer instanceof ArrayBuffer) {
+            bytes = new Uint8Array(buffer);
+          } else if (ArrayBuffer.isView(buffer)) {
+            // Accept any ArrayBuffer view (e.g. Uint8Array, Node Buffer)
+            bytes = new Uint8Array(buffer.buffer, buffer.byteOffset, buffer.byteLength);
+          } else {
             this.#problems.addProblem(problemId, {
               severity: "warn",
-              message: `Expected ArrayBuffer for topic ${topicName}, got ${typeof buffer}`,
+              message: `Expected binary data for topic ${topicName}, got ${typeof buffer}`,
             });
             return;
           }
-          const bytes = new Uint8Array(buffer);
           const innerMessage = messageReader.readMessage(bytes);
 
           // handle clock messages before choosing receiveTime so the clock can set its own receive time

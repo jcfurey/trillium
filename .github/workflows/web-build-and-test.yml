@@ -3,8 +3,9 @@ name: NodeJS Webpack Build and Test
 on:
   push:
     branches: [ "main", "develop" ]
+  # Run on every pull request regardless of base branch, so PRs targeting
+  # long-lived feature branches (e.g. feat/*) are tested too.
   pull_request:
-    branches: [ "main", "develop" ]
 
 jobs:
   build:

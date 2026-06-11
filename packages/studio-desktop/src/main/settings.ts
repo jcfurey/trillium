@@ -75,6 +75,9 @@ export function setAppSetting(
   // wiping every other setting. Write to a sibling .tmp then renameSync, which is atomic on
   // POSIX and atomic-enough on NTFS.
   const tmpPath = `${settingsPath}.tmp`;
-  fs.writeFileSync(tmpPath, JSON.stringify({ ...existingSettings, [key]: value }, undefined, 2));
+  fs.writeFileSync(
+    tmpPath,
+    JSON.stringify({ ...existingSettings, [key]: value }, undefined, 2) ?? "{}",
+  );
   fs.renameSync(tmpPath, settingsPath);
 }

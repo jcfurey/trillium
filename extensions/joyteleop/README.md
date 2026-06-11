@@ -28,18 +28,22 @@ npm run package
 ```
 
 `package` runs a production webpack build then `foxglove-extension package`,
-producing `erdc-robotics.trillium-joyteleop-extension-1.0.0.foxe` in the package
-root. Use `npm run local-install` to build and install into a local Foxglove
-desktop app, or `npm run build` for a dev (unminified) bundle.
+producing `erdcrobotics.trillium-joyteleop-extension-1.0.0.foxe` in the package
+root (the publisher is normalized to alphanumerics in the file name). Use
+`npm run local-install` to build and install into a local Foxglove desktop
+app, or `npm run build` for a dev (unminified) bundle.
 
 ## How it ships in trillium
 
 The trillium `Dockerfile` builds this extension in isolation (the generic
 per-extension `npm install && npm run package` loop) and stages the produced
 `.foxe` into the served marketplace at `extensions/joyteleop.foxe`, listed in
-`extensions/registry.json`. It is an **opt-in marketplace extension** (pulled in
-via the Add Extension dialog), not a fleet-baked builtin — the `_built` builtin
-sweep explicitly skips it.
+`extensions/registry.json`. The GitHub Pages deployment stages the same two
+paths, and the `JoyTeleop Extension` GitHub workflow publishes the versioned
+`.foxe` to GitHub Releases on `joyteleop-v*` tags. It is an **opt-in
+marketplace extension** (installed from Settings->Extensions via its Install
+button, or by dragging the `.foxe` into the app window), not a fleet-baked
+builtin — the `_built` builtin sweep explicitly skips it.
 
 ## Theme note
 

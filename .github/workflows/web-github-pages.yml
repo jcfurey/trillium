@@ -28,6 +28,18 @@ jobs:
         yarn
         yarn web:build:prod
 
+    # Serve the extension marketplace from the deployed site. The app fetches
+    # the registry from the relative URL "extensions/registry.json"
+    # (ExtensionMarketplaceProvider), and the JoyTeleop entry points at the
+    # relative archive "extensions/joyteleop.foxe" — without this staging the
+    # Pages deployment has no marketplace and no .foxe archive.
+    - name: Build JoyTeleop extension and stage extension archive
+      run: |
+        (cd extensions/joyteleop && npm ci && npm run package)
+        mkdir -p web/.webpack/extensions
+        cp extensions/registry.json web/.webpack/extensions/registry.json
+        cp extensions/joyteleop/*.foxe web/.webpack/extensions/joyteleop.foxe
+
     - name: Upload static files as artifact
       id: deployment
       uses: actions/upload-pages-artifact@v3 # or specific "vX.X.X" version tag for this action

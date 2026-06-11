@@ -655,6 +655,9 @@
       "gamepad",
       "joystick",
       "ros2"
-    ]
+    ],
+    "homepage": "https://github.com/jcfurey/trillium/tree/main/extensions/joyteleop",
+    "readme": "https://raw.githubusercontent.com/jcfurey/trillium/main/extensions/joyteleop/README.md",
+    "changelog": "https://raw.githubusercontent.com/jcfurey/trillium/main/extensions/joyteleop/CHANGELOG.md"
   }
 ]

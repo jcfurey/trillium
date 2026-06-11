@@ -245,7 +245,10 @@ export function downsampleScatter(points: Iterable<Point>, view: PlotViewport): 
 
   const pixelPerXValue = width / (bounds.x.max - bounds.x.min);
   const pixelPerYValue = height / (bounds.y.max - bounds.y.min);
-  const pixelPerRow = width;
+  // After rounding, x pixel values span [0, width] inclusive, so the row
+  // stride must be width + 1 to prevent a point at the right edge of one row
+  // from sharing a locator with a point at the left edge of the next row.
+  const pixelPerRow = width + 1;
 
   const indices: number[] = [];
 
@@ -260,8 +263,12 @@ export function downsampleScatter(points: Iterable<Point>, view: PlotViewport): 
       continue;
     }
 
-    const x = Math.round(datum.x * pixelPerXValue);
-    const y = Math.round(datum.y * pixelPerYValue);
+    // Normalize to the viewport origin so that x pixel values fall in
+    // [0, width] regardless of the magnitude of the underlying values (e.g.
+    // timestamps); otherwise distinct on-screen pixels can collide in the
+    // locator computation below.
+    const x = Math.round((datum.x - bounds.x.min) * pixelPerXValue);
+    const y = Math.round((datum.y - bounds.y.min) * pixelPerYValue);
 
     // the locator is the x/y pixel value as one number
     const locator = y * pixelPerRow + x;
