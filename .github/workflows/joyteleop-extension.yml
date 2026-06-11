@@ -6,7 +6,7 @@ name: JoyTeleop Extension
 # - Pushing a tag like `joyteleop-v1.0.0` additionally publishes a GitHub
 #   Release with the .foxe attached — the dedicated, versioned archive that
 #   external users can download and install into Trillium, Foxglove Studio,
-#   or Lichtblick via "Install local extension" (or drag and drop).
+#   or Lichtblick by dragging the .foxe into the app window.
 #
 # The tag version must match extensions/joyteleop/package.json.
 
@@ -84,5 +84,5 @@ jobs:
           --title "JoyTeleop extension $GITHUB_REF_NAME" \
           --notes "JoyTeleop gamepad teleoperation extension (.foxe package).
 
-        Install by downloading the .foxe below and adding it to Trillium, Foxglove Studio, or Lichtblick via the extension settings (Install local extension / drag and drop). Verify the download against SHA256SUMS." \
+        Install by downloading the .foxe below and dragging it into the Trillium, Foxglove Studio, or Lichtblick app window. Verify the download against SHA256SUMS." \
           *.foxe SHA256SUMS

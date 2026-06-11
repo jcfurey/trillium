@@ -31,8 +31,8 @@ RUN for d in /src/extensions/*/; do \
          npm run package); \
     done
 
-# joyteleop ships as a marketplace extension (opt-in via the Add Extension
-# dialog), not a fleet-baked builtin. Stage its .foxe into the _mirrored overlay
+# joyteleop ships as a marketplace extension (opt-in via the Install button
+# in Settings->Extensions), not a fleet-baked builtin. Stage its .foxe into the _mirrored overlay
 # as joyteleop.foxe so it serves at the root as extensions/joyteleop.foxe,
 # matching the relative "foxe": "extensions/joyteleop.foxe" entry in registry.json.
 # foxglove-extension package writes the .foxe to the package root.
@@ -91,10 +91,11 @@ FROM caddy:2.5.2-alpine
 WORKDIR /src
 COPY --from=build /src/web/.webpack ./
 
-# Marketplace extensions (per-user opt-in via the Add Extension dialog).
-# Backed by extensions/registry.json. IdbExtensionLoader fetches the
-# registry, downloads the chosen .foxe, and stores it in the browser's
-# IndexedDB. Each user picks what they want.
+# Marketplace extensions (per-user opt-in via Settings->Extensions).
+# Backed by extensions/registry.json: the app fetches the registry
+# (ExtensionMarketplaceProvider), the Install button downloads the chosen
+# .foxe, and IdbExtensionLoader stores it in the browser's IndexedDB.
+# Each user picks what they want.
 COPY extensions/ extensions/
 COPY extensions/registry.json /registry.json
 
