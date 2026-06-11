@@ -39,7 +39,7 @@ import { SettingsMenu } from "./SettingsMenu";
 
 const useStyles = makeStyles<{ debugDragRegion?: boolean }>()((
   theme,
-  { debugDragRegion = false }
+  { debugDragRegion = false },
 ) => {
   const NOT_DRAGGABLE_STYLE: Record<string, string> = { WebkitAppRegion: "no-drag" };
   if (debugDragRegion) {

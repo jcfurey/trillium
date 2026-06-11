@@ -170,8 +170,7 @@ export function ThreeDeeRender(props: {
     displayTemporaryError,
   ]);
 
-  useEffect(() => {
-  }, [renderer]);
+  useEffect(() => {}, [renderer]);
 
   useEffect(() => {
     setMessagePathDropConfig(

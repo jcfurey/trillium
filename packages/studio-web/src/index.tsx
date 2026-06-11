@@ -58,9 +58,7 @@ export async function main(getParams: () => Promise<MainParams> = async () => ({
   // eslint-disable-next-line react/no-deprecated
   ReactDOM.render(
     <StrictMode>
-      <LogAfterRender>
-        {rootElement}
-      </LogAfterRender>
+      <LogAfterRender>{rootElement}</LogAfterRender>
     </StrictMode>,
     rootEl,
   );

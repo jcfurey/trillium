@@ -153,13 +153,7 @@ export default class FoxgloveWebSocketPlayer implements Player {
   #parameterTypeByName = new Map<string, Parameter["type"]>();
   #messageSizeEstimateByTopic: Record<string, number> = {};
 
-  public constructor({
-    url,
-    sourceId,
-  }: {
-    url: string;
-    sourceId: string;
-  }) {
+  public constructor({ url, sourceId }: { url: string; sourceId: string }) {
     this.#url = url;
     this.#name = url;
     this.#sourceId = sourceId;
@@ -189,7 +183,10 @@ export default class FoxgloveWebSocketPlayer implements Player {
     this.#client = new FoxgloveClient({
       ws:
         typeof Worker !== "undefined"
-          ? new WorkerSocketAdapter(this.#url, [FoxgloveClient.SUPPORTED_SUBPROTOCOL, "foxglove.sdk.v1"])
+          ? new WorkerSocketAdapter(this.#url, [
+              FoxgloveClient.SUPPORTED_SUBPROTOCOL,
+              "foxglove.sdk.v1",
+            ])
           : new WebSocket(this.#url, [FoxgloveClient.SUPPORTED_SUBPROTOCOL, "foxglove.sdk.v1"]),
     });
 

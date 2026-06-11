@@ -79,13 +79,7 @@ function ThreeDeeRenderAdapter(interfaceMode: InterfaceMode, props: Props) {
         testOptions: { onDownloadImage: props.onDownloadImage, debugPicking: props.debugPicking },
         customSceneExtensions,
       }),
-    [
-      crash,
-      interfaceMode,
-      props.onDownloadImage,
-      props.debugPicking,
-      customSceneExtensions,
-    ],
+    [crash, interfaceMode, props.onDownloadImage, props.debugPicking, customSceneExtensions],
   );
 
   return (

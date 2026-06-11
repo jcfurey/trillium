@@ -27,7 +27,7 @@ jobs:
         corepack enable
         yarn clean || true
         yarn
-        yarn lint
+        yarn lint:ci
         yarn lint:unused-exports
         yarn build:packages
         yarn clean || true

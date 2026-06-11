@@ -919,7 +919,7 @@ export class Renderer extends EventEmitter<RendererEvents> implements IRenderer 
   }
 
   public updateControls(): void {
-      this.cameraHandler.updateControls();
+    this.cameraHandler.updateControls();
   }
 
   public canResetView(): boolean {
@@ -1527,7 +1527,6 @@ export class Renderer extends EventEmitter<RendererEvents> implements IRenderer 
       }
     });
   };
-
 }
 
 function queueMessage(

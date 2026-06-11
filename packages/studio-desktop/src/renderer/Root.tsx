@@ -103,10 +103,8 @@ export default function Root(props: {
     const unregisterLeave = desktopBridge.addIpcEventListener("leave-full-screen", () => {
       setFullScreen(false);
     });
-    const unregisterMax = desktopBridge.addIpcEventListener("maximize", () => {
-    });
-    const unregisterUnMax = desktopBridge.addIpcEventListener("unmaximize", () => {
-    });
+    const unregisterMax = desktopBridge.addIpcEventListener("maximize", () => {});
+    const unregisterUnMax = desktopBridge.addIpcEventListener("unmaximize", () => {});
     return () => {
       unregisterFull();
       unregisterLeave();
@@ -125,10 +123,9 @@ export default function Root(props: {
         extensionLoaders={extensionLoaders}
         appBarLeftInset={ctxbridge?.platform === "darwin" && !isFullScreen ? 72 : undefined}
         extraProviders={props.extraProviders}
-            >
-      <StudioApp />
-    </SharedRoot>
-
+      >
+        <StudioApp />
+      </SharedRoot>
     </>
   );
 }
