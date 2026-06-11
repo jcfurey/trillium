@@ -6,6 +6,13 @@ import path from "path";
 
 import { findRosPackage, rosPackageNameAtPath } from "./rosPackageResources";
 
+// The module under test imports { protocol } from "electron" for its protocol
+// handler registrations, and requiring the real electron package needs the
+// downloaded Electron binary to be present. These tests only exercise the pure
+// path-resolution helpers, so stub the module to keep the suite hermetic
+// (jest hoists this above the imports).
+jest.mock("electron", () => ({ protocol: {} }));
+
 const FIXTURES_ROOT = path.join(__dirname, "./fixtures");
 const PACKAGES_ROOT = path.join(FIXTURES_ROOT, "./packages");
 
