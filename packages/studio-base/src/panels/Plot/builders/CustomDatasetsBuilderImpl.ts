@@ -153,8 +153,14 @@ export class CustomDatasetsBuilderImpl {
           value: yValue.originalValue,
         });
 
-        extendBounds1D(xBounds, xValue.value);
-        extendBounds1D(yBounds, yValue.value);
+        // Skip non-finite values for bounds (NaN or ±Infinity) — they would otherwise pin
+        // bounds.max/min to Infinity and break Chart.js's scale calculation.
+        if (Number.isFinite(xValue.value)) {
+          extendBounds1D(xBounds, xValue.value);
+        }
+        if (Number.isFinite(yValue.value)) {
+          extendBounds1D(yBounds, yValue.value);
+        }
       }
 
       const fullLength = allData.length;
@@ -173,8 +179,12 @@ export class CustomDatasetsBuilderImpl {
           value: yValue.originalValue,
         });
 
-        extendBounds1D(xBounds, xValue.value);
-        extendBounds1D(yBounds, yValue.value);
+        if (Number.isFinite(xValue.value)) {
+          extendBounds1D(xBounds, xValue.value);
+        }
+        if (Number.isFinite(yValue.value)) {
+          extendBounds1D(yBounds, yValue.value);
+        }
       }
 
       // Downsample scatter is designed for scatter plots without points since it culls values

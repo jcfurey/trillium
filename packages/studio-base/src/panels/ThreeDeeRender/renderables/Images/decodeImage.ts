@@ -44,6 +44,40 @@ export const IMAGE_DEFAULT_COLOR_MODE_SETTINGS: Required<
 };
 const MIN_MAX_16_BIT = { minValue: 0, maxValue: 65535 };
 
+/**
+ * Downsample a 16-bit single-channel image to 8-bit by taking the high byte of each pixel.
+ *
+ * Used to support 16-bit Bayer encodings (bayer_rggb16, etc.) without writing dedicated
+ * 16-bit Bayer demosaic code: convert to 8-bit first, then call the existing 8-bit decoder.
+ * For visualization the lower 8 bits are not perceptually meaningful — image_pipeline does
+ * the same shift when displaying high-bit-depth Bayer.
+ *
+ * Returns a tightly-packed Uint8Array (no row stride padding) and the new step (bytes per row,
+ * which equals width since there's no padding).
+ */
+// eslint-disable-next-line @foxglove/no-boolean-parameters
+function downsample16To8(
+  data: Uint8Array,
+  width: number,
+  height: number,
+  step: number,
+  is_bigendian: boolean,
+): { data: Uint8Array; step: number } {
+  if (step < width * 2) {
+    throw new Error(`16-bit image row step (${step}) must be at least 2*width (${width * 2})`);
+  }
+  const out = new Uint8Array(width * height);
+  const hiByteOffset = is_bigendian ? 0 : 1;
+  for (let row = 0; row < height; row++) {
+    const inRow = row * step;
+    const outRow = row * width;
+    for (let col = 0; col < width; col++) {
+      out[outRow + col] = data[inRow + col * 2 + hiByteOffset]!;
+    }
+  }
+  return { data: out, step: width };
+}
+
 export type RawImageOptions = ColorModeSettings;
 
 /**
@@ -95,6 +129,26 @@ export function decodeRawImage(
     case "bayer_grbg8":
       decodeBayerGRBG8(rawData, width, height, step, output);
       break;
+    case "bayer_rggb16": {
+      const ds = downsample16To8(rawData, width, height, step, is_bigendian);
+      decodeBayerRGGB8(ds.data, width, height, ds.step, output);
+      break;
+    }
+    case "bayer_bggr16": {
+      const ds = downsample16To8(rawData, width, height, step, is_bigendian);
+      decodeBayerBGGR8(ds.data, width, height, ds.step, output);
+      break;
+    }
+    case "bayer_gbrg16": {
+      const ds = downsample16To8(rawData, width, height, step, is_bigendian);
+      decodeBayerGBRG8(ds.data, width, height, ds.step, output);
+      break;
+    }
+    case "bayer_grbg16": {
+      const ds = downsample16To8(rawData, width, height, step, is_bigendian);
+      decodeBayerGRBG8(ds.data, width, height, ds.step, output);
+      break;
+    }
     case "mono8":
     case "8UC1":
       decodeMono8(rawData, width, height, step, output);
@@ -128,6 +182,12 @@ export function decodeRawImage(
       break;
     }
     default:
-      throw new Error(`Unsupported encoding ${encoding}`);
+      // Common ROS encodings the panel doesn't decode (yet): 16SC1, 32SC1, 32FC2/3/4, 64FC1,
+      // 8UC2/4, 16UC2/3/4, multi-channel float images. cv_bridge supports them; this panel
+      // would need per-format decoders or a generic float-channel viewer.
+      throw new Error(
+        `Unsupported image encoding "${encoding}". Supported: rgb8/rgba8, bgr8/bgra8, ` +
+          `mono8/mono16, 8UC1/3, 16UC1, 32FC1, yuyv/uyvy, bayer_{rggb,bggr,gbrg,grbg}{8,16}.`,
+      );
   }
 }

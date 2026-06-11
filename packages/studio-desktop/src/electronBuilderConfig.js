@@ -12,7 +12,7 @@ const path = require("path");
 function makeElectronBuilderConfig(params) {
   return {
     electronVersion,
-    appId: "dev.foxglove.studio",
+    appId: "dev.trillium.app",
     npmRebuild: false,
     asar: true,
     directories: {
@@ -42,13 +42,18 @@ function makeElectronBuilderConfig(params) {
           mimeType: "application/octet-stream",
         },
         {
+          ext: "db3",
+          name: "ROS 2 Bag File",
+          mimeType: "application/octet-stream",
+        },
+        {
           ext: "mcap",
           name: "MCAP File",
           mimeType: "application/octet-stream",
         },
         {
           ext: "foxe",
-          name: "Foxglove Studio Extension",
+          name: "Trillium Extension",
           mimeType: "application/zip",
         },
       ],
@@ -68,13 +73,17 @@ function makeElectronBuilderConfig(params) {
           icon: path.join(__dirname, "../resources/icon/BagIcon.ico"),
         },
         {
+          ext: "db3",
+          name: "ROS 2 Bag File",
+        },
+        {
           ext: "mcap",
           name: "MCAP File",
           icon: path.join(__dirname, "../resources/icon/McapIcon.ico"),
         },
         {
           ext: "foxe",
-          name: "Foxglove Studio Extension",
+          name: "Trillium Extension",
           mimeType: "application/zip",
         },
       ],
@@ -114,6 +123,14 @@ function makeElectronBuilderConfig(params) {
             LSItemContentTypes: ["org.ros.bag"],
           },
           {
+            CFBundleTypeExtensions: ["db3"],
+            CFBundleTypeName: "ROS 2 Bag File",
+            CFBundleTypeRole: "Viewer",
+            LSHandlerRank: "Default",
+            CFBundleTypeIconSystemGenerated: 1,
+            LSItemContentTypes: ["org.ros.bag2"],
+          },
+          {
             CFBundleTypeExtensions: ["mcap"],
             CFBundleTypeIconFile: "McapIcon",
             CFBundleTypeName: "MCAP File",
@@ -125,7 +142,7 @@ function makeElectronBuilderConfig(params) {
           {
             CFBundleTypeExtensions: ["foxe"],
             CFBundleTypeIconFile: "FoxeIcon",
-            CFBundleTypeName: "Foxglove Studio Extension File",
+            CFBundleTypeName: "Trillium Extension File",
             CFBundleTypeRole: "Viewer",
             LSHandlerRank: "Owner",
             CFBundleTypeIconSystemGenerated: 1,
@@ -149,7 +166,7 @@ function makeElectronBuilderConfig(params) {
           },
           {
             UTTypeConformsTo: ["public.data", "public.archive", "public.zip-archive"],
-            UTTypeDescription: "Foxglove Studio Extension File",
+            UTTypeDescription: "Trillium Extension File",
             UTTypeIcons: { UTTypeIconText: "foxe" },
             UTTypeIdentifier: "dev.foxglove.extension",
             UTTypeTagSpecification: { "public.filename-extension": "foxe" },
@@ -164,6 +181,15 @@ function makeElectronBuilderConfig(params) {
             UTTypeIdentifier: "org.ros.bag",
             UTTypeTagSpecification: { "public.filename-extension": "bag" },
             UTTypeReferenceURL: "http://wiki.ros.org/Bags",
+          },
+          {
+            UTTypeConformsTo: ["public.data", "public.database"],
+            UTTypeDescription: "ROS 2 Bag File",
+            UTTypeIcons: { UTTypeIconText: "db3" },
+            UTTypeIdentifier: "org.ros.bag2",
+            UTTypeTagSpecification: { "public.filename-extension": "db3" },
+            UTTypeReferenceURL:
+              "https://docs.ros.org/en/rolling/Tutorials/Beginner-CLI-Tools/Recording-And-Playing-Back-Data/Recording-And-Playing-Back-Data.html",
           },
         ],
       },

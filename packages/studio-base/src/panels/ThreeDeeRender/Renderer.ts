@@ -1014,6 +1014,17 @@ export class Renderer extends EventEmitter<RendererEvents> implements IRenderer 
 
   public addCoordinateFrame(frameId: string): void {
     const normalizedFrameId = this.normalizeFrameId(frameId);
+    if (normalizedFrameId.length === 0) {
+      // ROS 2 (REP-105) requires non-empty frame_ids on every header. A flood of empties from a
+      // misbehaving publisher would otherwise be silently dropped here, so surface a single
+      // problem entry that the user can act on.
+      this.settings.errors.add(
+        ["transforms"],
+        ADD_TRANSFORM_ERROR,
+        `Received an empty frame_id (REP-105 requires a non-empty frame on every header)`,
+      );
+      return;
+    }
     if (!this.transformTree.hasFrame(normalizedFrameId)) {
       this.transformTree.getOrCreateFrame(normalizedFrameId);
       this.coordinateFrameList = this.transformTree.frameList();
@@ -1053,7 +1064,7 @@ export class Renderer extends EventEmitter<RendererEvents> implements IRenderer 
       this.settings.errors.add(
         ["transforms"],
         ADD_TRANSFORM_ERROR,
-        `Error adding transform for frame ${normalizedChildId}: ${err.message}`,
+        `Error adding transform for frame ${normalizedChildId}: ${err instanceof Error ? err.message : String(err)}`,
       );
     }
   }

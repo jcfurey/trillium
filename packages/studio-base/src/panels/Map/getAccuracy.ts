@@ -54,7 +54,7 @@ export function getAccuracy(
       // and the corresponding vector is in the rightmost column. Ellipse radii
       // are based on the eigenvalues, and orientation on the vector.
       try {
-        const eigen = eigs(Klatlon) as {
+        const eigen = eigs(Klatlon) as unknown as {
           vectors: [NumericPair, NumericPair];
           values: NumericPair;
         };

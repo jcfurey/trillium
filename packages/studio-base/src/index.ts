@@ -26,6 +26,7 @@ export { default as waitForFonts } from "./util/waitForFonts";
 export { initI18n } from "./i18n";
 export type { ExtensionLoader } from "./services/ExtensionLoader";
 export { IdbExtensionLoader } from "./services/IdbExtensionLoader";
+export { BuiltinExtensionLoader } from "./services/BuiltinExtensionLoader";
 export type { IExtensionStorage } from "./services/IExtensionStorage";
 export type { ExtensionInfo, ExtensionNamespace } from "./types/Extensions";
 export { AppSetting } from "./AppSetting";

@@ -21,15 +21,45 @@ function normalizeImageData(data: unknown): Int8Array | Uint8Array {
   }
 }
 
+/**
+ * Verify that a raw image's data buffer length matches its declared dimensions. Without this,
+ * a malformed message (data missing, or stride/dimensions wrong) silently feeds an empty/short
+ * buffer into the decoder, which then writes garbage pixels to the output. Throw instead so the
+ * existing setImage error path shows a useful diagnostic.
+ *
+ * Skips the empty-default case (step×height === 0) so test fixtures and not-yet-populated
+ * messages still pass through.
+ */
+function assertRawImageDataLength(
+  data: Int8Array | Uint8Array,
+  step: number,
+  height: number,
+  encoding: string,
+): void {
+  const expected = step * height;
+  if (expected !== 0 && data.byteLength !== expected) {
+    throw new Error(
+      `Image data length (${data.byteLength} bytes) does not match step × height ` +
+        `(${step} × ${height} = ${expected} bytes) for encoding "${encoding}"`,
+    );
+  }
+}
+
 export function normalizeRosImage(message: PartialMessage<RosImage>): RosImage {
+  const height = message.height ?? 0;
+  const width = message.width ?? 0;
+  const encoding = message.encoding ?? "";
+  const step = message.step ?? 0;
+  const data = normalizeImageData(message.data);
+  assertRawImageDataLength(data, step, height, encoding);
   return {
     header: normalizeHeader(message.header),
-    height: message.height ?? 0,
-    width: message.width ?? 0,
-    encoding: message.encoding ?? "",
+    height,
+    width,
+    encoding,
     is_bigendian: message.is_bigendian ?? false,
-    step: message.step ?? 0,
-    data: normalizeImageData(message.data),
+    step,
+    data,
   };
 }
 
@@ -44,14 +74,20 @@ export function normalizeRosCompressedImage(
 }
 
 export function normalizeRawImage(message: PartialMessage<RawImage>): RawImage {
+  const height = message.height ?? 0;
+  const width = message.width ?? 0;
+  const encoding = message.encoding ?? "";
+  const step = message.step ?? 0;
+  const data = normalizeImageData(message.data);
+  assertRawImageDataLength(data, step, height, encoding);
   return {
     timestamp: normalizeTime(message.timestamp),
     frame_id: message.frame_id ?? "",
-    height: message.height ?? 0,
-    width: message.width ?? 0,
-    encoding: message.encoding ?? "",
-    step: message.step ?? 0,
-    data: normalizeImageData(message.data),
+    height,
+    width,
+    encoding,
+    step,
+    data,
   };
 }
 

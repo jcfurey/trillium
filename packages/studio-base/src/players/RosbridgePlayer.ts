@@ -472,6 +472,13 @@ export default class RosbridgePlayer implements Player {
         }
         try {
           const buffer = (message as { bytes: ArrayBuffer }).bytes;
+          if (!(buffer instanceof ArrayBuffer)) {
+            this.#problems.addProblem(problemId, {
+              severity: "warn",
+              message: `Expected ArrayBuffer for topic ${topicName}, got ${typeof buffer}`,
+            });
+            return;
+          }
           const bytes = new Uint8Array(buffer);
           const innerMessage = messageReader.readMessage(bytes);
 

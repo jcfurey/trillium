@@ -47,7 +47,6 @@ import {
   StatusLevel,
   FetchAssetStatus,
   FetchAssetResponse,
-  BinaryOpcode,
 } from "@foxglove/ws-protocol";
 
 import { JsonMessageWriter } from "./JsonMessageWriter";
@@ -66,8 +65,27 @@ const GET_ALL_PARAMS_REQUEST_ID = "get-all-params";
 const GET_ALL_PARAMS_PERIOD_MS = 15000;
 const ROS_ENCODINGS = ["ros1", "cdr"];
 const SUPPORTED_PUBLICATION_ENCODINGS = ["json", ...ROS_ENCODINGS];
+// JSON is the fallback when the server doesn't support cdr/ros1. Be aware that JS Number can
+// only represent integers up to 2^53 - 1 exactly — a custom message with a uint64 field
+// (sequence numbers, monotonic IDs) published from a panel will silently lose precision when
+// serialized via JSON. ROS 2 builtin_interfaces/Time is sec+nsec int32s, so timestamps are safe.
 const FALLBACK_PUBLICATION_ENCODING = "json";
 const SUPPORTED_SERVICE_ENCODINGS = ["json", ...ROS_ENCODINGS];
+
+const SERVICE_CALL_TIMEOUT_MS = 30000;
+const FETCH_ASSET_TIMEOUT_MS = 30000;
+
+type PendingServiceCall = {
+  resolve: (response: ServiceCallResponse) => void;
+  reject: (err: Error) => void;
+  timer: ReturnType<typeof setTimeout>;
+};
+
+type PendingAssetRequest = {
+  resolve: (response: FetchAssetResponse) => void;
+  reject: (err: Error) => void;
+  timer: ReturnType<typeof setTimeout>;
+};
 
 type ResolvedChannel = {
   channel: Channel;
@@ -131,6 +149,7 @@ export default class FoxgloveWebSocketPlayer implements Player {
   #channelsById = new Map<ChannelId, ResolvedChannel>();
   #unsupportedChannelIds = new Set<ChannelId>();
   #recentlyCanceledSubscriptions = new Set<SubscriptionId>();
+  #recentlyCanceledTimers = new Set<ReturnType<typeof setTimeout>>();
   #parameters = new Map<string, ParameterValue>();
   #getParameterInterval?: ReturnType<typeof setInterval>;
   #openTimeout?: ReturnType<typeof setInterval>;
@@ -139,16 +158,13 @@ export default class FoxgloveWebSocketPlayer implements Player {
   #publicationsByTopic = new Map<string, Publication>();
   #serviceCallEncoding?: string;
   #servicesByName = new Map<string, ResolvedService>();
-  #serviceResponseCbs = new Map<
-    ServiceCallRequest["callId"],
-    (response: ServiceCallResponse) => void
-  >();
+  #serviceResponseCbs = new Map<ServiceCallRequest["callId"], PendingServiceCall>();
   #publishedTopics?: Map<string, Set<string>>;
   #subscribedTopics?: Map<string, Set<string>>;
   #advertisedServices?: Map<string, Set<string>>;
   #nextServiceCallId = 0;
   #nextAssetRequestId = 0;
-  #fetchAssetRequests = new Map<number, (response: FetchAssetResponse) => void>();
+  #fetchAssetRequests = new Map<number, PendingAssetRequest>();
   #fetchedAssets = new Map<string, Promise<Asset>>();
   #parameterTypeByName = new Map<string, Parameter["type"]>();
   #messageSizeEstimateByTopic: Record<string, number> = {};
@@ -258,6 +274,8 @@ export default class FoxgloveWebSocketPlayer implements Player {
 
       this.#client?.close();
       this.#client = undefined;
+
+      this.#failPendingRequests("Connection lost");
 
       this.#problems.addProblem("ws:connection-failed", {
         severity: "error",
@@ -520,6 +538,13 @@ export default class FoxgloveWebSocketPlayer implements Player {
         const receiveTime = this.#getCurrentTime();
         const topic = chanInfo.channel.topic;
         const deserializedMessage = chanInfo.parsedChannel.deserialize(data);
+        if (deserializedMessage == undefined) {
+          this.#problems.addProblem(`msgError:${topic}`, {
+            severity: "warn",
+            message: `Failed to deserialize message on topic ${topic}`,
+          });
+          return;
+        }
 
         // Lookup the size estimate for this topic or compute it if not found in the cache.
         let msgSizeEstimate = this.#messageSizeEstimateByTopic[topic];
@@ -538,14 +563,6 @@ export default class FoxgloveWebSocketPlayer implements Player {
         });
         this.#parsedMessagesBytes += sizeInBytes;
         if (this.#parsedMessagesBytes > CURRENT_FRAME_MAXIMUM_SIZE_BYTES) {
-          this.#problems.addProblem(`webSocketPlayer:parsedMessageCacheFull`, {
-            severity: "error",
-            message: `WebSocketPlayer maximum frame size (${(
-              CURRENT_FRAME_MAXIMUM_SIZE_BYTES / 1_000_000
-            ).toFixed(
-              2,
-            )}MB) reached. Dropping old messages. This accumulation can occur if the browser tab has been inactive.`,
-          });
           // Amortize cost of dropping messages by dropping parsedMessages size to
           // 80% so that it doesn't happen for every message after reaching the limit
           const evictUntilSize = 0.8 * CURRENT_FRAME_MAXIMUM_SIZE_BYTES;
@@ -555,8 +572,37 @@ export default class FoxgloveWebSocketPlayer implements Player {
             droppedBytes += this.#parsedMessages[indexToCutBefore]!.sizeInBytes;
             indexToCutBefore++;
           }
+          // Capture the dropped time range before splicing so the user can correlate the gap
+          // with whatever they were watching. Without this, eviction looks like silent
+          // playback continuity in the UI.
+          const firstDropped = this.#parsedMessages[0];
+          const lastDropped = this.#parsedMessages[indexToCutBefore - 1];
           this.#parsedMessages.splice(0, indexToCutBefore);
           this.#parsedMessagesBytes -= droppedBytes;
+          const fromTime =
+            firstDropped != undefined
+              ? `${firstDropped.receiveTime.sec}.${String(firstDropped.receiveTime.nsec).padStart(
+                  9,
+                  "0",
+                )}`
+              : "?";
+          const toTime =
+            lastDropped != undefined
+              ? `${lastDropped.receiveTime.sec}.${String(lastDropped.receiveTime.nsec).padStart(
+                  9,
+                  "0",
+                )}`
+              : "?";
+          this.#problems.addProblem(`webSocketPlayer:parsedMessageCacheFull`, {
+            severity: "error",
+            message: `WebSocketPlayer maximum frame size (${(
+              CURRENT_FRAME_MAXIMUM_SIZE_BYTES / 1_000_000
+            ).toFixed(2)}MB) reached. Dropped ${indexToCutBefore} message${
+              indexToCutBefore === 1 ? "" : "s"
+            } (~${(droppedBytes / 1_000_000).toFixed(
+              2,
+            )}MB) covering receive-time ${fromTime} → ${toTime}. This accumulation can occur if the browser tab has been inactive.`,
+          });
         }
 
         // Update the message count for this topic
@@ -761,16 +807,17 @@ export default class FoxgloveWebSocketPlayer implements Player {
     });
 
     this.#client.on("serviceCallResponse", (response) => {
-      const responseCallback = this.#serviceResponseCbs.get(response.callId);
-      if (!responseCallback) {
+      const pending = this.#serviceResponseCbs.get(response.callId);
+      if (!pending) {
         this.#problems.addProblem(`callService:${response.callId}`, {
           severity: "error",
           message: `Received a response for a service for which no callback was registered`,
         });
         return;
       }
-      responseCallback(response);
+      clearTimeout(pending.timer);
       this.#serviceResponseCbs.delete(response.callId);
+      pending.resolve(response);
     });
 
     this.#client.on("connectionGraphUpdate", (event) => {
@@ -803,14 +850,15 @@ export default class FoxgloveWebSocketPlayer implements Player {
     });
 
     this.#client.on("fetchAssetResponse", (response) => {
-      const responseCallback = this.#fetchAssetRequests.get(response.requestId);
-      if (!responseCallback) {
+      const pending = this.#fetchAssetRequests.get(response.requestId);
+      if (!pending) {
         throw Error(
           `Received a response for a fetch asset request for which no callback was registered`,
         );
       }
-      responseCallback(response);
-      this.#serviceResponseCbs.delete(response.requestId);
+      clearTimeout(pending.timer);
+      this.#fetchAssetRequests.delete(response.requestId);
+      pending.resolve(response);
     });
   };
 
@@ -920,6 +968,31 @@ export default class FoxgloveWebSocketPlayer implements Player {
       clearInterval(this.#getParameterInterval);
       this.#getParameterInterval = undefined;
     }
+    for (const timer of this.#recentlyCanceledTimers) {
+      clearTimeout(timer);
+    }
+    this.#recentlyCanceledTimers.clear();
+    this.#recentlyCanceledSubscriptions.clear();
+    this.#failPendingRequests("Player closed");
+  }
+
+  // Reject every in-flight callService / fetchAsset Promise. Without this, callers receive a
+  // Promise that resolves only on a server response — a server that never responds (closed
+  // connection, killed node) leaves the Promise pending forever and the UI hangs.
+  #failPendingRequests(reason: string): void {
+    for (const pending of this.#serviceResponseCbs.values()) {
+      clearTimeout(pending.timer);
+      pending.reject(new Error(reason));
+    }
+    this.#serviceResponseCbs.clear();
+    for (const pending of this.#fetchAssetRequests.values()) {
+      clearTimeout(pending.timer);
+      pending.reject(new Error(reason));
+    }
+    this.#fetchAssetRequests.clear();
+    // Drop the per-uri cache so a retry after reconnect actually re-issues the request instead
+    // of awaiting a Promise that already rejected.
+    this.#fetchedAssets.clear();
   }
 
   public setSubscriptions(subscriptions: SubscribePayload[]): void {
@@ -949,10 +1022,11 @@ export default class FoxgloveWebSocketPlayer implements Player {
         // Reset the message count for this topic
         topicStats.delete(topic);
 
-        setTimeout(
-          () => this.#recentlyCanceledSubscriptions.delete(subId),
-          SUBSCRIPTION_WARNING_SUPPRESSION_MS,
-        );
+        const timer = setTimeout(() => {
+          this.#recentlyCanceledSubscriptions.delete(subId);
+          this.#recentlyCanceledTimers.delete(timer);
+        }, SUBSCRIPTION_WARNING_SUPPRESSION_MS);
+        this.#recentlyCanceledTimers.add(timer);
       }
     }
     this.#topicsStats = topicStats;
@@ -1101,26 +1175,41 @@ export default class FoxgloveWebSocketPlayer implements Player {
     const { service, parsedResponse, requestMessageWriter } = resolvedService;
 
     const requestMsgEncoding = service.request?.encoding ?? this.#serviceCallEncoding!;
+    const callId = this.#allocateServiceCallId();
     const serviceCallRequest: ServiceCallPayload = {
       serviceId: service.id,
-      callId: ++this.#nextServiceCallId,
+      callId,
       encoding: requestMsgEncoding,
       data: new DataView(new Uint8Array().buffer),
     };
 
     const message = requestMessageWriter.writeMessage(request);
     serviceCallRequest.data = new DataView(message.buffer);
-    this.#client.sendServiceCallRequest(serviceCallRequest);
 
     return await new Promise<Record<string, unknown>>((resolve, reject) => {
-      this.#serviceResponseCbs.set(serviceCallRequest.callId, (response: ServiceCallResponse) => {
-        try {
-          const data = parsedResponse.deserialize(response.data);
-          resolve(data as Record<string, unknown>);
-        } catch (error) {
-          reject(error);
-        }
+      const timer = setTimeout(() => {
+        this.#serviceResponseCbs.delete(callId);
+        reject(
+          new Error(
+            `Service call to '${serviceName}' timed out after ${SERVICE_CALL_TIMEOUT_MS}ms`,
+          ),
+        );
+      }, SERVICE_CALL_TIMEOUT_MS);
+
+      this.#serviceResponseCbs.set(callId, {
+        resolve: (response: ServiceCallResponse) => {
+          try {
+            const data = parsedResponse.deserialize(response.data);
+            resolve(data as Record<string, unknown>);
+          } catch (error) {
+            reject(error as Error);
+          }
+        },
+        reject,
+        timer,
       });
+
+      this.#client?.sendServiceCallRequest(serviceCallRequest);
     });
   }
 
@@ -1145,27 +1234,61 @@ export default class FoxgloveWebSocketPlayer implements Player {
         return;
       }
 
-      const assetRequestId = ++this.#nextAssetRequestId;
-      this.#fetchAssetRequests.set(assetRequestId, (response) => {
-        if (response.status === FetchAssetStatus.SUCCESS) {
-          const newAsset: Asset = {
-            uri,
-            data: new Uint8Array(
-              response.data.buffer,
-              response.data.byteOffset,
-              response.data.byteLength,
-            ),
-          };
-          resolve(newAsset);
-        } else {
-          reject(new Error(`Failed to fetch asset: ${response.error}`));
-        }
+      const assetRequestId = this.#allocateAssetRequestId();
+      const timer = setTimeout(() => {
+        this.#fetchAssetRequests.delete(assetRequestId);
+        this.#fetchedAssets.delete(uri);
+        reject(new Error(`Fetch of asset '${uri}' timed out after ${FETCH_ASSET_TIMEOUT_MS}ms`));
+      }, FETCH_ASSET_TIMEOUT_MS);
+
+      this.#fetchAssetRequests.set(assetRequestId, {
+        resolve: (response) => {
+          if (response.status === FetchAssetStatus.SUCCESS) {
+            const newAsset: Asset = {
+              uri,
+              data: new Uint8Array(
+                response.data.buffer,
+                response.data.byteOffset,
+                response.data.byteLength,
+              ),
+            };
+            resolve(newAsset);
+          } else {
+            this.#fetchedAssets.delete(uri);
+            reject(new Error(`Failed to fetch asset: ${response.error}`));
+          }
+        },
+        reject: (err) => {
+          this.#fetchedAssets.delete(uri);
+          reject(err);
+        },
+        timer,
       });
       this.#client?.fetchAsset(uri, assetRequestId);
     });
 
     this.#fetchedAssets.set(uri, promise);
     return await promise;
+  }
+
+  // Hand out a unique service-call ID, wrapping at MAX_SAFE_INTEGER and skipping any in-flight
+  // ID. ROS 2 service calls have no protocol-level ID lifetime, so a long-running session that
+  // exhausted the unbounded counter could see precision-loss collisions and route a response to
+  // the wrong callback. Wrap-and-skip keeps IDs unique for as long as the map has room.
+  #allocateServiceCallId(): number {
+    do {
+      this.#nextServiceCallId =
+        this.#nextServiceCallId >= Number.MAX_SAFE_INTEGER ? 1 : this.#nextServiceCallId + 1;
+    } while (this.#serviceResponseCbs.has(this.#nextServiceCallId));
+    return this.#nextServiceCallId;
+  }
+
+  #allocateAssetRequestId(): number {
+    do {
+      this.#nextAssetRequestId =
+        this.#nextAssetRequestId >= Number.MAX_SAFE_INTEGER ? 1 : this.#nextAssetRequestId + 1;
+    } while (this.#fetchAssetRequests.has(this.#nextAssetRequestId));
+    return this.#nextAssetRequestId;
   }
 
   public setGlobalVariables(): void {}
@@ -1294,13 +1417,9 @@ export default class FoxgloveWebSocketPlayer implements Player {
     this.#problems.clear();
     this.#parameters = new Map();
     this.#fetchedAssets.clear();
-    for (const [requestId, callback] of this.#fetchAssetRequests) {
-      callback({
-        op: BinaryOpcode.FETCH_ASSET_RESPONSE,
-        status: FetchAssetStatus.ERROR,
-        requestId,
-        error: "WebSocket connection reset",
-      });
+    for (const pending of this.#fetchAssetRequests.values()) {
+      clearTimeout(pending.timer);
+      pending.reject(new Error("WebSocket connection reset"));
     }
     this.#fetchAssetRequests.clear();
     this.#parameterTypeByName.clear();
@@ -1312,11 +1431,30 @@ export default class FoxgloveWebSocketPlayer implements Player {
     const maybeRos = ["ros1", "ros2"].includes(this.#profile ?? "");
     for (const [name, types] of datatypes) {
       const knownTypes = this.#datatypes.get(name);
-      if (knownTypes && !isMsgDefEqual(types, knownTypes)) {
-        this.#problems.addProblem(`schema-changed-${name}`, {
-          message: `Definition of schema '${name}' has changed during the server's runtime`,
-          severity: "error",
-        });
+      if (knownTypes) {
+        // Normalize nested type references to full form (pkg/msg/Type) before comparing.
+        // Preloaded common ROS types (ros2humble) use short form (pkg/Type) in their definitions
+        // while foxglove-bridge sends full-form schemas, producing false-positive conflicts.
+        const normalizedTypes = maybeRos ? normalizeDefinitionTypeNames(types) : types;
+        const normalizedKnown = maybeRos ? normalizeDefinitionTypeNames(knownTypes) : knownTypes;
+        if (!isMsgDefEqual(normalizedTypes, normalizedKnown)) {
+          // Normalized forms still differ — this is a real schema change, not a short/full
+          // type-name mismatch. A node likely restarted with an incompatible message
+          // definition; deserialization for already-running subscribers may now corrupt data.
+          // Warn the user and let the bridge's schema win going forward.
+          this.#problems.addProblem(`schema-changed-${name}`, {
+            message: `Definition of schema '${name}' has changed during the server's runtime`,
+            severity: "warn",
+          });
+          if (updatedDatatypes == undefined) {
+            updatedDatatypes = new Map(this.#datatypes);
+          }
+          updatedDatatypes.set(name, types);
+          const fullTypeName = dataTypeToFullName(name);
+          if (maybeRos && fullTypeName !== name) {
+            updatedDatatypes.set(fullTypeName, normalizeDefinitionTypeNames(types));
+          }
+        }
       } else {
         if (updatedDatatypes == undefined) {
           updatedDatatypes = new Map(this.#datatypes);
@@ -1325,10 +1463,9 @@ export default class FoxgloveWebSocketPlayer implements Player {
 
         const fullTypeName = dataTypeToFullName(name);
         if (maybeRos && fullTypeName !== name) {
-          updatedDatatypes.set(fullTypeName, {
-            ...types,
-            name: types.name ? dataTypeToFullName(types.name) : undefined,
-          });
+          // Normalize nested type references so the mirror's definitions match
+          // full-form schemas sent by foxglove-bridge.
+          updatedDatatypes.set(fullTypeName, normalizeDefinitionTypeNames(types));
         }
       }
     }
@@ -1344,6 +1481,21 @@ function dataTypeToFullName(dataType: string): string {
     return `${parts[0]}/msg/${parts[1]}`;
   }
   return dataType;
+}
+
+// Normalize all nested type references in a message definition to full form (pkg/msg/Type).
+// Preloaded common ROS types use short form (pkg/Type), while foxglove-bridge sends full-form
+// schemas. Without normalization, isMsgDefEqual produces false-positive schema-changed errors.
+function normalizeDefinitionTypeNames(msgDef: MessageDefinition): MessageDefinition {
+  type Field = MessageDefinition["definitions"][number];
+  return {
+    ...msgDef,
+    name: msgDef.name ? dataTypeToFullName(msgDef.name) : undefined,
+    definitions: msgDef.definitions.map((field: Field) => ({
+      ...field,
+      type: dataTypeToFullName(field.type),
+    })),
+  };
 }
 
 function statusLevelToProblemSeverity(level: StatusLevel): PlayerProblem["severity"] {

@@ -4,7 +4,7 @@
 
 **Dependencies:**
 
-- [Node.js](https://nodejs.org/en/) v16.10+
+- [Node.js](https://nodejs.org/en/) v20+
 
 ## Getting started
 

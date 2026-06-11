@@ -136,6 +136,7 @@ const aboutItems = new Map<
       links: [
         { title: "Trillium Github", url: "https://github.com/pdragy/trillium" },
         { title: "Foxglove docs", url: "https://docs.foxglove.dev/docs" },
+        { title: "Trillium releases", url: "https://github.com/jcfurey/trillium/releases" },
       ],
     },
   ],

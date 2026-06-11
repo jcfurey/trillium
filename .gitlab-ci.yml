@@ -1,0 +1,45 @@
+image: node:22
+
+stages:
+  - build
+  - publish
+
+variables:
+  GITLAB_TOKEN: $GIT_AUTH_TOKEN
+  GIT_STRATEGY: clone
+  GIT_SUBMODULE_STRATEGY: recursive
+  GIT_SUBMODULE_FORCE_HTTPS: true
+  ELECTRON_SKIP_BINARY_DOWNLOAD: 1
+  YARN_ENABLE_IMMUTABLE_INSTALLS: false
+
+cache:
+  paths:
+    - node_modules/
+    - .yarn/cache/
+
+build_app:
+  stage: build
+  before_script:
+    - corepack enable
+  script:
+    - yarn install
+    - apt update && apt install jq --no-install-recommends -y
+    - yarn run web:build:prod
+    - cd extensions && bash build_extensions.sh && cp -r release ../web/.webpack/extensions && rm -r release && cd ..
+    - tar -czf release.tar.gz -C web/.webpack .
+  artifacts:
+    paths:
+      - release.tar.gz
+    expire_in: 1 hour
+
+publish_package:
+  stage: publish
+  script:
+    - VERSION=$CI_COMMIT_TAG
+    - PACKAGE_NAME="Trillium"
+    - echo "Uploading package ${PACKAGE_NAME} version ${VERSION}"
+    - 'wget --method=PUT --header="JOB-TOKEN: ${CI_JOB_TOKEN}" --body-file=release.tar.gz "${CI_API_V4_URL}/projects/${CI_PROJECT_ID}/packages/generic/${PACKAGE_NAME}/${VERSION}/release.tar.gz"'
+  rules:
+    - if: $CI_COMMIT_TAG
+      when: on_success
+    - when: never

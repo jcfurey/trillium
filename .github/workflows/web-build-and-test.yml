@@ -2,9 +2,9 @@ name: NodeJS Webpack Build and Test
 
 on:
   push:
-    branches: [ "main" ]
+    branches: [ "main", "develop" ]
   pull_request:
-    branches: [ "main" ]
+    branches: [ "main", "develop" ]
 
 jobs:
   build:
@@ -29,6 +29,8 @@ jobs:
         yarn
         yarn lint:ci
         yarn lint:unused-exports
+        yarn lint:dependencies
+        yarn license-check
         yarn build:packages
         yarn clean || true
         yarn web:build:prod

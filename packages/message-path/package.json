@@ -4,7 +4,7 @@
   "private": true,
   "repository": {
     "type": "git",
-    "url": "https://github.com/foxglove/studio.git"
+    "url": "https://github.com/jcfurey/trillium.git"
   },
   "author": {
     "name": "Foxglove Technologies",
@@ -25,6 +25,6 @@
   "devDependencies": {
     "@foxglove/tsconfig": "2.0.0",
     "@types/nearley": "2.11.5",
-    "typescript": "5.3.3"
+    "typescript": "5.2.2"
   }
 }

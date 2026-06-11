@@ -164,16 +164,16 @@ export const mainConfig =
         }
         @media (prefers-color-scheme: dark) {
           #root {
-            background-color: ${palette.dark.background?.default}};
+            background-color: ${palette.dark.background?.default};
             color: ${palette.dark.text?.primary};
           }
         }
       </style>
+      <script>
+        global = globalThis;
+        globalThis.FOXGLOVE_STUDIO_DEFAULT_LAYOUT = [/*FOXGLOVE_STUDIO_DEFAULT_LAYOUT_PLACEHOLDER*/][0];
+      </script>
     </head>
-    <script>
-      global = globalThis;
-      globalThis.FOXGLOVE_STUDIO_DEFAULT_LAYOUT = [/*FOXGLOVE_STUDIO_DEFAULT_LAYOUT_PLACEHOLDER*/][0];
-    </script>
     <body>
       <div id="root"></div>
     </body>

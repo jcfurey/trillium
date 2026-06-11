@@ -80,6 +80,16 @@ export class PinholeCameraModel {
   public readonly width: number;
   /** The full camera image height in pixels. */
   public readonly height: number;
+  /**
+   * The distortion model name from the source CameraInfo. `""`, `"plumb_bob"`,
+   * and `"rational_polynomial"` use the standard Brown-Conrady code paths in
+   * this class; `"equirectangular"` is a Trillium extension where the K matrix
+   * encodes a linear pixel↔angle mapping and `projectPixelTo3dRay` /
+   * `projectPixelTo3dPlane` return spherical (azimuth, elevation) directions
+   * instead of pinhole rays. Renderables can branch on this field if they
+   * need projection-aware behavior (e.g. cylindrical/sphere geometry).
+   */
+  public readonly distortion_model: string;
 
   // Mostly copied from `fromCameraInfo`
   // <http://docs.ros.org/diamondback/api/image_geometry/html/c++/pinhole__camera__model_8cpp_source.html#l00064>
@@ -91,11 +101,22 @@ export class PinholeCameraModel {
     if (width <= 0 || height <= 0) {
       throw new Error(`Invalid image size ${width}x${height}`);
     }
-    if (model.length > 0 && model !== "plumb_bob" && model !== "rational_polynomial") {
+    if (
+      model.length > 0 &&
+      model !== "plumb_bob" &&
+      model !== "rational_polynomial" &&
+      model !== "equirectangular"
+    ) {
       throw new Error(`Unrecognized distortion_model "${model}"`);
     }
+    this.distortion_model = model;
     if (K.length !== 0 && K.length !== 9) {
       throw new Error(`K.length=${K.length}, expected 9`);
+    }
+    if (model === "equirectangular" && (K.length !== 9 || K[0] === 0 || K[4] === 0)) {
+      // #projectPixelToEquirectRay divides by K[0] (fx) and K[4] (fy); both must be non-zero
+      // or the per-pixel ray comes out NaN/Inf and the 3D panel renders garbage geometry.
+      throw new Error(`Invalid K matrix for equirectangular projection (fx=${K[0]}, fy=${K[4]})`);
     }
     if (P.length !== 12) {
       throw new Error(`P.length=${P.length}, expected 12`);
@@ -320,6 +341,10 @@ export class PinholeCameraModel {
    *   projection matrix `P` is not set.
    */
   public projectPixelTo3dPlane(out: Vector3, pixel: Readonly<Vector2>): Vector3 {
+    if (this.distortion_model === "equirectangular") {
+      return this.#projectPixelToEquirectRay(out, pixel);
+    }
+
     const { K } = this;
     const fx = K[0];
     const fy = K[4];
@@ -336,6 +361,29 @@ export class PinholeCameraModel {
   }
 
   /**
+   * Equirectangular projection: K encodes a linear pixel↔angle mapping where
+   * `fx = W / (2π)` and `fy = H / vfov`. For pixel (u, v):
+   *   azimuth   = (u - cx) / fx   [radians, +right]
+   *   elevation = (cy - v) / fy   [radians, +up]
+   * Returns a unit direction in the optical frame (+Z forward, +X right, +Y down).
+   */
+  #projectPixelToEquirectRay(out: Vector3, pixel: Readonly<Vector2>): Vector3 {
+    const { K } = this;
+    const fx = K[0];
+    const fy = K[4];
+    const cx = K[2];
+    const cy = K[5];
+
+    const azimuth = (pixel.x - cx) / fx;
+    const elevation = (cy - pixel.y) / fy;
+    const cosEl = Math.cos(elevation);
+    out.x = cosEl * Math.sin(azimuth);
+    out.y = -Math.sin(elevation);
+    out.z = cosEl * Math.cos(azimuth);
+    return out;
+  }
+
+  /**
    * Projects a 2D image pixel into a 3D ray in world coordinates. This is
    * equivalent to normalizing the result of `projectPixelTo3dPlane` to get a
    * direction vector.
@@ -346,6 +394,11 @@ export class PinholeCameraModel {
    *   projection matrix `P` is not set.
    */
   public projectPixelTo3dRay(out: Vector3, pixel: Readonly<Vector2>): Vector3 {
+    if (this.distortion_model === "equirectangular") {
+      // Equirect plane projection already returns a unit vector.
+      return this.#projectPixelToEquirectRay(out, pixel);
+    }
+
     this.projectPixelTo3dPlane(out, pixel);
 
     // Normalize the ray direction
