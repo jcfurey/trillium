@@ -38,6 +38,25 @@ To build the Desktop application, see CONTRIBUTING.md
 
 A number of extensions are available and installable directly in your browser or in the Desktop app. To view and manage these, go to Trillium->Settings->Extensions.
 
+### JoyTeleop extension (.foxe)
+
+The JoyTeleop gamepad teleoperation panel ships as a standalone `.foxe` extension package, built from [`extensions/joyteleop`](extensions/joyteleop). External users can install it into any compatible app (Trillium, Foxglove Studio, Lichtblick) — it is not tied to this repo's build.
+
+Get the archive from either dedicated location:
+
+1. **GitHub Releases** (versioned): download `erdcrobotics.trillium-joyteleop-extension-<version>.foxe` from the release tagged `joyteleop-v<version>`, published by the `JoyTeleop Extension` workflow whenever a `joyteleop-v*` tag is pushed. Each release includes a `SHA256SUMS` file to verify the download.
+2. **The deployed web app**: the GitHub Pages site serves the current build at `extensions/joyteleop.foxe` (e.g. `https://<owner>.github.io/trillium/extensions/joyteleop.foxe`), alongside the marketplace registry at `extensions/registry.json`. The Docker image serves the same paths.
+
+To install: in Trillium or Foxglove Studio, open Settings->Extensions and choose *Install local extension* (or drag and drop the `.foxe` into the app), then add the JoyTeleop panel to your layout. In the Trillium web/Docker deployments the extension also appears directly in the in-app marketplace list, no download needed.
+
+To build it yourself:
+
+```
+cd extensions/joyteleop
+npm ci
+npm run package   # writes erdcrobotics.trillium-joyteleop-extension-<version>.foxe
+```
+
 ## History and related projects
 
 Trillium is a fork of Foxglove, and Foxglove was built/copied from [webviz](https://github.com/cruise-automation/webviz). Last known release of open-sourced Foxglove studio v1 before it was deleted and taken private was 1.87.0, and last commit was [56620d2](https://github.com/pdragy/trillium/commit/56620d28a684503a50f6c793b41b11e968b08254)

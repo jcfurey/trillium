@@ -46,5 +46,6 @@
     "lodash-es": "4.18.1",
     "ts-essentials": "9.4.1",
     "tss-react": "4.9.2"
-  }
+  },
+  "homepage": "https://github.com/jcfurey/trillium/tree/main/extensions/joyteleop"
 }
