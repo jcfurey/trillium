@@ -18,6 +18,10 @@ import {
   mockSetNotificationHandler,
 } from "@foxglove/studio-base/test/MockSendNotification";
 
+// React 18 requires this flag for act() to work outside of
+// @testing-library/react (e.g. react-dom/test-utils act with createRoot)
+(globalThis as { IS_REACT_ACT_ENVIRONMENT?: boolean }).IS_REACT_ACT_ENVIRONMENT = true;
+
 // Mock out sendNotification for all tests
 jest.mock("@foxglove/studio-base/util/sendNotification", () => {
   return {

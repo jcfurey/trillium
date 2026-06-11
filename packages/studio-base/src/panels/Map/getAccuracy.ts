@@ -51,17 +51,20 @@ export function getAccuracy(
 
       // Compute the eigenvalues & vectors of the covariance matrix. They will
       // be sorted in ascending order, so the largest value is eigenvalues[1]
-      // and the corresponding vector is in the rightmost column. Ellipse radii
+      // and the corresponding eigenvector is the last entry. Ellipse radii
       // are based on the eigenvalues, and orientation on the vector.
       try {
         const eigen = eigs(Klatlon) as unknown as {
-          vectors: [NumericPair, NumericPair];
           values: NumericPair;
+          eigenvectors: { value: MathNumericType; vector: NumericPair }[];
         };
 
-        // Eigenvectors are returned in columns
-        const eigenvector = [eigen.vectors[0][1], eigen.vectors[1][1]];
         const eigenvalues = eigen.values;
+        const majorEntry = eigen.eigenvectors[eigen.eigenvectors.length - 1];
+        if (majorEntry == undefined) {
+          return undefined;
+        }
+        const eigenvector = majorEntry.vector;
 
         if (
           !isNumber(eigenvector[0]) ||

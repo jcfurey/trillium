@@ -1064,7 +1064,9 @@ export class Renderer extends EventEmitter<RendererEvents> implements IRenderer 
       this.settings.errors.add(
         ["transforms"],
         ADD_TRANSFORM_ERROR,
-        `Error adding transform for frame ${normalizedChildId}: ${err instanceof Error ? err.message : String(err)}`,
+        `Error adding transform for frame ${normalizedChildId}: ${
+          err instanceof Error ? err.message : String(err)
+        }`,
       );
     }
   }

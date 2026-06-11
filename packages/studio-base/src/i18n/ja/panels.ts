@@ -43,7 +43,8 @@ export const panels: Partial<TypeOptions["resources"]["panels"]> = {
   teleop: "Teleop",
   teleopDescription: "ライブ接続でロボットを操作します。",
   teleopStamped: "Teleop (Stamped)",
-  teleopStampedDescription: "ライブ接続でロボットを操作します（geometry_msgs/TwistStampedをパブリッシュ）。",
+  teleopStampedDescription:
+    "ライブ接続でロボットを操作します（geometry_msgs/TwistStampedをパブリッシュ）。",
   topicGraph: "トピックグラフ",
   topicGraphDescription: "アクティブなノード、トピック、サービスのグラフを表示します。",
   userScripts: "ユーザースクリプト",
