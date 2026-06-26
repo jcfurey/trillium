@@ -7,6 +7,9 @@ ignorePatterns:
   - dist
   - out
   - template
+  # Standalone extension packages with their own build tooling (built into
+  # .foxe bundles by the Dockerfile, not part of the yarn workspace)
+  - extensions
   - "packages/**/wasm/*.js"
   - "!.storybook"
   - storybook-static

@@ -50,6 +50,12 @@ describe("useTopicPublishFrequencies", () => {
   });
 
   it("updates frequences for a live source", () => {
+    // The hook samples Date.now() on each render to compute live frequencies.
+    // Pin the clock so the interval between the two renders is deterministic:
+    // if they land in the same millisecond the time delta is zero and the
+    // computed frequency stays undefined.
+    const dateNow = jest.spyOn(Date, "now").mockReturnValue(1_000);
+
     let activeData: Partial<PlayerState["activeData"]> = {
       currentTime: { sec: 2, nsec: 0 },
       endTime: { sec: 10, nsec: 0 },
@@ -79,9 +85,12 @@ describe("useTopicPublishFrequencies", () => {
         ["topic_b", { numMessages: 40 }],
       ]),
     };
+    dateNow.mockReturnValue(2_000);
     rerender();
 
     expect(result.current["topic_a"]).toBeGreaterThan(0);
     expect(result.current["topic_b"]).toBeGreaterThan(0);
+
+    dateNow.mockRestore();
   });
 });

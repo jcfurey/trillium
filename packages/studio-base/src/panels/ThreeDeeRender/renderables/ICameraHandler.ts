@@ -20,7 +20,7 @@ export interface ICameraHandler extends SceneExtension {
   /**
    * Update the orbital controls
    */
-  updateControls (): void;
+  updateControls(): void;
   /**
    * Gets the state of the camera if interface mode supports it, otherwise undefined
    */

@@ -1,0 +1,16 @@
+{
+  "extends": "create-foxglove-extension/tsconfig/tsconfig.json",
+  "include": ["./src/**/*"],
+  "compilerOptions": {
+    "rootDir": "./src",
+    "lib": ["dom", "dom.iterable", "es2021"],
+    "jsx": "react-jsx",
+    "module": "esnext",
+    "moduleResolution": "bundler",
+    "target": "es2020",
+    "noEmit": true,
+    "skipLibCheck": true,
+    "composite": false,
+    "declaration": false
+  }
+}

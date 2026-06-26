@@ -341,7 +341,12 @@ function updatePlayerStateAction(
 
   const subscriberIdsByTopic = prevState.subscriberIdsByTopic;
 
-  const lastMessageEventByTopic = prevState.lastMessageEventByTopic;
+  // Clone before mutating so we don't write through to prevState. The sibling reducer
+  // updateSubscriberAction does the same (see line 279). Without the clone, .set() below
+  // mutates prevState.lastMessageEventByTopic in place — Zustand's structural-sharing
+  // optimizations and any consumer comparing references see incorrect signals, and any code
+  // holding a reference to the prior Map silently observes the new entries.
+  const lastMessageEventByTopic = new Map(prevState.lastMessageEventByTopic);
 
   // Put messages into per-subscriber queues
   if (messages && messages !== prevState.public.playerState.activeData?.messages) {

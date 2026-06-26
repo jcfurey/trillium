@@ -70,7 +70,9 @@ describe("<DocumentDropListener>", () => {
   });
 
   afterEach(() => {
-    root.unmount();
+    act(() => {
+      root.unmount();
+    });
     document.body.removeChild(wrapper);
     window.removeEventListener("dragover", windowDragoverHandler);
   });

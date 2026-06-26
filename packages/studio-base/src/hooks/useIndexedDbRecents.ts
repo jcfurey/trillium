@@ -95,7 +95,7 @@ function useIndexedDbRecents(): IRecentsStore {
             exists = true;
           }
         } catch (error) {
-            exists = true;
+          exists = true;
         }
 
         // Filter connection recents which match the same sourceId and extra args

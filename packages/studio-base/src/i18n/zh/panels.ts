@@ -41,6 +41,8 @@ export const panels: Partial<TypeOptions["resources"]["panels"]> = {
   tableDescription: "以表格格式显示主题消息。",
   teleop: "远程操纵",
   teleopDescription: "通过实时连接远程操纵机器人。",
+  teleopStamped: "远程操纵（Stamped）",
+  teleopStampedDescription: "通过实时连接远程操纵机器人（发布 geometry_msgs/TwistStamped）。",
   topicGraph: "主题图",
   topicGraphDescription: "显示活动节点、主题和服务的图形。",
   userScripts: "用户脚本",

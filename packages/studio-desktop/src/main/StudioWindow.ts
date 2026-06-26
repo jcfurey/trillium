@@ -79,9 +79,7 @@ function newStudioWindow(deepLinks: string[] = [], reloadMainWindow: () => void)
       sandbox: false, // Allow preload script to access Node builtins
       preload: preloadPath,
       nodeIntegration: false,
-      additionalArguments: [
-        encodeRendererArg("deepLinks", deepLinks),
-      ],
+      additionalArguments: [encodeRendererArg("deepLinks", deepLinks)],
       // Disable webSecurity in development so we can make XML-RPC calls, load
       // remote data, etc. In production, the app is served from file:// URLs so
       // the Origin header is not sent, disabling the CORS
@@ -209,8 +207,7 @@ function buildMenu(browserWindow: BrowserWindow): Menu {
         {
           label: t("desktopWindow:settings"),
           accelerator: "CommandOrControl+,",
-          click: () => {
-          },
+          click: () => {},
         },
         { role: "services" },
         { type: "separator" },
@@ -341,8 +338,7 @@ function buildMenu(browserWindow: BrowserWindow): Menu {
     submenu: [
       {
         label: t("appBar:about"),
-        click: () => {
-        },
+        click: () => {},
       },
       { type: "separator" },
       {

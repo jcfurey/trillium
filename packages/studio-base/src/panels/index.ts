@@ -20,6 +20,7 @@ import stateTransitionsThumbnail from "./StateTransitions/thumbnail.png";
 import tabThumbnail from "./Tab/thumbnail.png";
 import tableThumbnail from "./Table/thumbnail.png";
 import teleopThumbnail from "./Teleop/thumbnail.png";
+import teleopStampedThumbnail from "./TeleopStamped/thumbnail.png";
 import threeDeeRenderThumbnail from "./ThreeDeeRender/thumbnail.png";
 import topicGraphThumbnail from "./TopicGraph/thumbnail.png";
 import variableSliderThumbnail from "./VariableSlider/thumbnail.png";
@@ -77,6 +78,16 @@ export const getBuiltin: (t: TFunction<"panels">) => PanelInfo[] = (t) => [
     description: t("teleopDescription"),
     thumbnail: teleopThumbnail,
     module: async () => await import("./Teleop"),
+  },
+  // JoyTeleop is not a built-in panel. It ships as a self-contained
+  // marketplace extension under extensions/joyteleop/ (pulled in via the
+  // Add Extension dialog), so its source lives there, not here.
+  {
+    title: t("teleopStamped"),
+    type: "TeleopStamped",
+    description: t("teleopStampedDescription"),
+    thumbnail: teleopStampedThumbnail,
+    module: async () => await import("./TeleopStamped"),
   },
   {
     title: t("map"),

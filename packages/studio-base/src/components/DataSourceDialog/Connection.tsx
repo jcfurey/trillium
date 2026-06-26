@@ -145,12 +145,7 @@ export default function Connection(): JSX.Element {
     }
     selectSource(selectedSource.id, { type: "connection", params: fieldValues });
     dialogActions.dataSource.close();
-  }, [
-    selectedSource,
-    selectSource,
-    fieldValues,
-    dialogActions.dataSource,
-  ]);
+  }, [selectedSource, selectSource, fieldValues, dialogActions.dataSource]);
 
   const disableOpen = selectedSource?.disabledReason != undefined || fieldErrors.size > 0;
 

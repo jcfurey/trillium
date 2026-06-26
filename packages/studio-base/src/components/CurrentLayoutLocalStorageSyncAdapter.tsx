@@ -53,15 +53,23 @@ export function CurrentLayoutLocalStorageSyncAdapter(): JSX.Element {
 
     const serializedLayoutData = localStorage.getItem(LOCAL_STORAGE_STUDIO_LAYOUT_KEY);
 
+    let parsedLayout: LayoutData | undefined;
     if (serializedLayoutData) {
-      log.debug("Restoring layout from local storage");
+      try {
+        parsedLayout = JSON.parse(serializedLayoutData) as LayoutData;
+        log.debug("Restoring layout from local storage");
+      } catch (err) {
+        // Corrupt localStorage (browser killed mid-write, disk full, manual edit) would
+        // otherwise crash the adapter on startup with no recovery path. Fall back to the
+        // default layout and drop the bad payload so the next save overwrites it cleanly.
+        log.warn("Failed to parse layout from local storage; falling back to default", err);
+        localStorage.removeItem(LOCAL_STORAGE_STUDIO_LAYOUT_KEY);
+      }
     } else {
       log.debug("No layout found in local storage. Using default layout.");
     }
 
-    const layoutData = migratePanelsState(
-      serializedLayoutData ? (JSON.parse(serializedLayoutData) as LayoutData) : defaultLayout,
-    );
+    const layoutData = migratePanelsState(parsedLayout ?? defaultLayout);
     setCurrentLayout({ data: layoutData });
   }, [setCurrentLayout]);
 

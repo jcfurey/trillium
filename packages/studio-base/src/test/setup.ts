@@ -12,7 +12,7 @@
 //   You may not use this file except in compliance with the License.
 
 import util from "util";
-import { WritableStream } from 'web-streams-polyfill';
+import { WritableStream } from "web-streams-polyfill";
 
 import setImmediate from "@foxglove/studio-base/util/setImmediate";
 

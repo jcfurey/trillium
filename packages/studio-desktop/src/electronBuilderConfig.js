@@ -188,7 +188,8 @@ function makeElectronBuilderConfig(params) {
             UTTypeIcons: { UTTypeIconText: "db3" },
             UTTypeIdentifier: "org.ros.bag2",
             UTTypeTagSpecification: { "public.filename-extension": "db3" },
-            UTTypeReferenceURL: "https://docs.ros.org/en/rolling/Tutorials/Beginner-CLI-Tools/Recording-And-Playing-Back-Data/Recording-And-Playing-Back-Data.html",
+            UTTypeReferenceURL:
+              "https://docs.ros.org/en/rolling/Tutorials/Beginner-CLI-Tools/Recording-And-Playing-Back-Data/Recording-And-Playing-Back-Data.html",
           },
         ],
       },

@@ -1,0 +1,88 @@
+name: JoyTeleop Extension
+
+# Builds the standalone JoyTeleop .foxe extension package.
+#
+# - Every run uploads the .foxe (plus SHA256SUMS) as a workflow artifact.
+# - Pushing a tag like `joyteleop-v1.0.0` additionally publishes a GitHub
+#   Release with the .foxe attached — the dedicated, versioned archive that
+#   external users can download and install into Trillium, Foxglove Studio,
+#   or Lichtblick by dragging the .foxe into the app window.
+#
+# The tag version must match extensions/joyteleop/package.json.
+
+on:
+  push:
+    branches: [ "main", "develop" ]
+    tags: [ "joyteleop-v*" ]
+  pull_request:
+    paths:
+      - "extensions/joyteleop/**"
+      - ".github/workflows/joyteleop-extension.yml"
+  workflow_dispatch:
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+
+    steps:
+    - uses: actions/checkout@v4
+
+    - name: Use Node.js 22.x
+      uses: actions/setup-node@v4
+      with:
+        node-version: 22.x
+
+    - name: Build and package .foxe
+      working-directory: extensions/joyteleop
+      run: |
+        npm ci
+        npm run typecheck
+        npm run package
+        sha256sum *.foxe > SHA256SUMS
+        cat SHA256SUMS
+
+    - name: Check tag matches package version
+      if: startsWith(github.ref, 'refs/tags/joyteleop-v')
+      working-directory: extensions/joyteleop
+      run: |
+        pkg_version=$(node -p "require('./package.json').version")
+        tag_version="${GITHUB_REF_NAME#joyteleop-v}"
+        if [ "$pkg_version" != "$tag_version" ]; then
+          echo "Tag version ($tag_version) does not match package.json version ($pkg_version)" >&2
+          exit 1
+        fi
+
+    - name: Upload .foxe artifact
+      uses: actions/upload-artifact@v4
+      with:
+        name: joyteleop-foxe
+        path: |
+          extensions/joyteleop/*.foxe
+          extensions/joyteleop/SHA256SUMS
+
+  release:
+    needs: build
+    if: github.event_name == 'push' && startsWith(github.ref, 'refs/tags/joyteleop-v')
+
+    permissions:
+      contents: write
+
+    runs-on: ubuntu-latest
+
+    steps:
+    - name: Download .foxe artifact
+      uses: actions/download-artifact@v4
+      with:
+        name: joyteleop-foxe
+
+    - name: Create GitHub Release with .foxe attached
+      env:
+        GH_TOKEN: ${{ github.token }}
+      run: |
+        gh release create "$GITHUB_REF_NAME" \
+          --repo "$GITHUB_REPOSITORY" \
+          --title "JoyTeleop extension $GITHUB_REF_NAME" \
+          --notes "JoyTeleop gamepad teleoperation extension (.foxe package).
+
+        Install by downloading the .foxe below and dragging it into the Trillium, Foxglove Studio, or Lichtblick app window. Verify the download against SHA256SUMS." \
+          *.foxe SHA256SUMS

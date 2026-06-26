@@ -138,3 +138,57 @@ do
 
     cd "$current_dir" || exit 1
 done
+
+
+# Mirror any remaining remote .foxe URLs into release/ and rewrite the
+# foxe field to a relative path. Verifies sha256sum from the registry
+# before rewriting; leaves the remote URL in place on any failure.
+cd "${extensions_dir}/release" || exit 1
+
+sha256_of() {
+    if command -v sha256sum >/dev/null 2>&1; then
+        sha256sum "$1" | awk '{print $1}'
+    else
+        shasum -a 256 "$1" | awk '{print $1}'
+    fi
+}
+
+mapfile -t remote_entries < <(jq -c '.[] | select(.foxe | test("^https?://"))' registry.json)
+
+for entry in "${remote_entries[@]}"; do
+    id=$(echo "$entry" | jq -r '.id')
+    url=$(echo "$entry" | jq -r '.foxe')
+    expected_sha=$(echo "$entry" | jq -r '.sha256sum')
+    foxe_name=$(basename "$url")
+
+    if [[ -f "$foxe_name" ]]; then
+        actual_sha=$(sha256_of "$foxe_name")
+        if [[ "$actual_sha" == "$expected_sha" ]]; then
+            echo "[$id] cached, sha matches"
+        else
+            echo "[$id] cached file sha differs, re-downloading"
+            rm -f "$foxe_name"
+        fi
+    fi
+
+    if [[ ! -f "$foxe_name" ]]; then
+        echo "[$id] fetching $url"
+        if ! curl -fsSL --retry 3 -o "$foxe_name" "$url"; then
+            echo "[$id] download failed, leaving remote URL in registry"
+            rm -f "$foxe_name"
+            continue
+        fi
+        actual_sha=$(sha256_of "$foxe_name")
+        if [[ "$actual_sha" != "$expected_sha" ]]; then
+            echo "[$id] sha mismatch (expected $expected_sha, got $actual_sha), leaving remote URL"
+            rm -f "$foxe_name"
+            continue
+        fi
+    fi
+
+    jq --arg id "$id" --arg path "extensions/$foxe_name" \
+       '(.[] | select(.id == $id) | .foxe) = $path' \
+       registry.json > registry.tmp && mv registry.tmp registry.json
+done
+
+cd "$extensions_dir" || exit 1

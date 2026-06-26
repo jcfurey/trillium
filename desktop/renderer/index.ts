@@ -10,8 +10,7 @@ async function main() {
   const appConfiguration = await NativeStorageAppConfiguration.Initialize(
     (global as { storageBridge?: Storage }).storageBridge!,
     {
-      defaults: {
-      },
+      defaults: {},
     },
   );
 

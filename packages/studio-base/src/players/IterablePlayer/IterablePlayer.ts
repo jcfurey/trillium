@@ -78,7 +78,6 @@ const MEMORY_INFO_BUFFERED_MSGS = "Buffered messages";
 const EMPTY_ARRAY = Object.freeze([]);
 
 type IterablePlayerOptions = {
-
   source: IDeserializedIterableSource | ISerializedIterableSource;
 
   // Optional player name

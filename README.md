@@ -36,7 +36,26 @@ To build the Desktop application, see CONTRIBUTING.md
 
 ## Extensions
 
-A number of extensions are available and installable directly in your browser or in the Desktop app. To view and manage these, go to Trillium->Settings->Extensions.
+A number of extensions are available. To view and manage these, go to Trillium->Settings->Extensions. The marketplace list there is served by the web and Docker deployments (from `extensions/registry.json`); each entry has an Install button. The Desktop app does not ship the marketplace registry — install extensions there by dragging a downloaded `.foxe` file into the app window, which works in the browser too.
+
+### JoyTeleop extension (.foxe)
+
+The JoyTeleop gamepad teleoperation panel ships as a standalone `.foxe` extension package, built from [`extensions/joyteleop`](extensions/joyteleop). External users can install it into any compatible app (Trillium, Foxglove Studio, Lichtblick) — it is not tied to this repo's build.
+
+Get the archive from either dedicated location:
+
+1. **GitHub Releases** (versioned): download `erdcrobotics.trillium-joyteleop-extension-<version>.foxe` from the release tagged `joyteleop-v<version>`, published by the `JoyTeleop Extension` workflow whenever a `joyteleop-v*` tag is pushed. Each release includes a `SHA256SUMS` file to verify the download.
+2. **The deployed web app**: the GitHub Pages site serves the current build at `extensions/joyteleop.foxe` (e.g. `https://<owner>.github.io/trillium/extensions/joyteleop.foxe`), alongside the marketplace registry at `extensions/registry.json`. The Docker image serves the same paths.
+
+To install: drag and drop the downloaded `.foxe` into the app window (a snackbar confirms the install), then add the JoyTeleop panel to your layout. In the Trillium web/Docker deployments the extension also appears directly in the in-app marketplace list (Settings->Extensions) with an Install button, no download needed.
+
+To build it yourself:
+
+```
+cd extensions/joyteleop
+npm ci
+npm run package   # writes erdcrobotics.trillium-joyteleop-extension-<version>.foxe
+```
 
 ## History and related projects
 

@@ -17,6 +17,7 @@ import {
   McapLocalDataSourceFactory,
   SampleNuscenesDataSourceFactory,
   SharedRoot,
+  BuiltinExtensionLoader,
   IdbExtensionLoader,
 } from "@foxglove/studio-base";
 
@@ -40,6 +41,11 @@ export function WebRoot(props: {
     [],
   );
   const [extensionLoaders] = useState(() => [
+    // Served from /extensions/builtin/ rather than /extensions/ so the
+    // BuiltinExtensionLoader (fleet-baked .foxe path) doesn't collide with
+    // the marketplace registry, which is mounted at /extensions/ by the
+    // Dockerfile and listed via /registry.json.
+    new BuiltinExtensionLoader("/extensions/builtin/index.json"),
     new IdbExtensionLoader("org"),
     new IdbExtensionLoader("local"),
   ]);

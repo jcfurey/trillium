@@ -28,6 +28,7 @@ import { RenderableMeshResource } from "./markers/RenderableMeshResource";
 import { RenderableSphere } from "./markers/RenderableSphere";
 import { missingTransformMessage, MISSING_TRANSFORM } from "./transforms";
 import type { AnyRendererSubscription, IRenderer } from "../IRenderer";
+import { isValidMeshUrl } from "../ModelCache";
 import { BaseUserData, Renderable } from "../Renderable";
 import { PartialMessageEvent, SceneExtension, onlyLastByTopicMessage } from "../SceneExtension";
 import { SettingsTreeEntry } from "../SettingsManager";
@@ -730,14 +731,20 @@ export class Urdfs extends SceneExtension<UrdfRenderable> {
     this.updateSettingsTree();
   };
 
-  #fetchUrdf(instanceId: string, url: string): void {
+  // eslint-disable-next-line @foxglove/no-boolean-parameters
+  #fetchUrdf(instanceId: string, url: string, allowFileProtocol = false): void {
     const renderable = this.renderables.get(instanceId);
     if (!renderable) {
       throw new Error(`_fetchUrdf() should only be called for existing renderables`);
     }
 
-    // Check if a valid URL was provided
-    if (!isValidUrl(url)) {
+    // file:// URLs are normally rejected by isValidMeshUrl (defense for cross-protocol
+    // references like marker.mesh_resource and COLLADA <init_from> textures, where the URL is
+    // attacker-controllable). The desktop "URDF from file path" UI is the one legitimate code
+    // path that constructs file:// URLs, gated by isDesktopApp() at the call site. Permit it
+    // here only when the caller explicitly opts in.
+    const isAllowedFileUrl = allowFileProtocol && url.startsWith("file://");
+    if (!isAllowedFileUrl && !isValidUrl(url)) {
       const path = renderable.userData.settingsPath;
       this.renderer.settings.errors.add(path, VALID_SRC_ERR, `Invalid URDF URL: "${url}"`);
       return;
@@ -864,8 +871,10 @@ export class Urdfs extends SceneExtension<UrdfRenderable> {
           this.renderer.settings.errors.add(path, VALID_SRC_ERR, `Invalid URDF URL: "${url}"`);
         }
       } else if (sourceType === "filePath") {
-        if (filePath != undefined) {
-          this.#fetchUrdf(instanceId, `file://${filePath}`);
+        if (filePath != undefined && isDesktopApp()) {
+          // The settings UI gates this option on isDesktopApp(); re-check here so a layout JSON
+          // carrying sourceType=filePath can't trigger a file:// fetch on web builds.
+          this.#fetchUrdf(instanceId, `file://${filePath}`, true);
         } else {
           const errMsg = `Invalid File Path: "${filePath}"`;
           this.renderer.settings.errors.add(path, VALID_SRC_ERR, errMsg);
@@ -1164,16 +1173,10 @@ function createMeshMarker(
   };
 }
 
-const VALID_PROTOCOLS = ["https:", "http:", "file:", "data:", "package:"];
-
-function isValidUrl(str: string): boolean {
-  try {
-    const url = new URL(str);
-    return VALID_PROTOCOLS.includes(url.protocol);
-  } catch (_err) {
-    return false;
-  }
-}
+// URDF source URLs share the same protocol allowlist as mesh URLs (defined in ModelCache so
+// every mesh-loading entry point uses the same gate). See the comment on VALID_MESH_PROTOCOLS
+// for the rationale on dropping file:.
+const isValidUrl = isValidMeshUrl;
 
 function urdfChildren(
   transforms: TransformData[] | undefined,

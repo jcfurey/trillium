@@ -70,8 +70,14 @@ export function setAppSetting(
     // Ignore file load or parsing errors, including settings.json not existing
   }
 
+  // Write atomically: a crash mid-truncate would otherwise leave an empty/partial settings.json,
+  // which the next setAppSetting silently treats as {} and overwrites with a one-key file —
+  // wiping every other setting. Write to a sibling .tmp then renameSync, which is atomic on
+  // POSIX and atomic-enough on NTFS.
+  const tmpPath = `${settingsPath}.tmp`;
   fs.writeFileSync(
-    settingsPath,
-    JSON.stringify({ ...existingSettings, [key]: value }, undefined, 2),
+    tmpPath,
+    JSON.stringify({ ...existingSettings, [key]: value }, undefined, 2) ?? "{}",
   );
+  fs.renameSync(tmpPath, settingsPath);
 }
