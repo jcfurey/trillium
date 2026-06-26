@@ -28,7 +28,7 @@ RUN for d in /src/extensions/*/; do \
             echo "==> Skipping $name (no \`package\` script)"; continue; }; \
         echo "==> Building extension: $name"; \
         (cd "$d" && npm install --no-audit --no-fund --loglevel=warn && \
-         npm run package); \
+         npm run package) || { echo "==> FAILED building $name"; exit 1; }; \
     done
 
 # joyteleop ships as a marketplace extension (opt-in via the Install button

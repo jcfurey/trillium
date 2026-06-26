@@ -852,9 +852,11 @@ export default class FoxgloveWebSocketPlayer implements Player {
     this.#client.on("fetchAssetResponse", (response) => {
       const pending = this.#fetchAssetRequests.get(response.requestId);
       if (!pending) {
-        throw Error(
-          `Received a response for a fetch asset request for which no callback was registered`,
-        );
+        this.#problems.addProblem(`fetchAsset:${response.requestId}`, {
+          severity: "error",
+          message: `Received a response for a fetch asset request for which no callback was registered`,
+        });
+        return;
       }
       clearTimeout(pending.timer);
       this.#fetchAssetRequests.delete(response.requestId);
