@@ -27,6 +27,9 @@ RUN for d in /src/extensions/*/; do \
             2>/dev/null || { \
             echo "==> Skipping $name (no \`package\` script)"; continue; }; \
         echo "==> Building extension: $name"; \
+        [ -f "$d/CHANGELOG.md" ] || { \
+            echo "==> $name has no CHANGELOG.md (required by create-foxglove-extension); stubbing one"; \
+            echo "# $name" > "$d/CHANGELOG.md"; }; \
         (cd "$d" && npm install --no-audit --no-fund --loglevel=warn && \
          npm run package) || { echo "==> FAILED building $name"; exit 1; }; \
     done
