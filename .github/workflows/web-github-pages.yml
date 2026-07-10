@@ -28,6 +28,19 @@ jobs:
         yarn
         yarn web:build:prod
 
+    # Assemble the extension bundle (marketplace registry + offline-mirrored
+    # .foxe blobs + fleet-baked builtins) with the same script the container and
+    # GitLab CI use, then stage it where the app serves it (/extensions/). Keeps
+    # all three deploys in lockstep. jq/curl are preinstalled on ubuntu-latest.
+    # Submodule-sourced extensions (e.g. the erdc_joystick joystick panel) are
+    # not built here — their submodules aren't checked out on this runner — so
+    # they're absent from the Pages marketplace and the script logs a warning
+    # rather than failing.
+    - name: Assemble extension bundle
+      run: |
+        bash extensions/build_extensions.sh
+        cp -r extensions/release web/.webpack/extensions
+
     - name: Upload static files as artifact
       id: deployment
       uses: actions/upload-pages-artifact@v3 # or specific "vX.X.X" version tag for this action

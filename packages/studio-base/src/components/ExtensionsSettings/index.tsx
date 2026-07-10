@@ -39,6 +39,8 @@ function displayNameForNamespace(namespace: string): string {
   switch (namespace) {
     case "org":
       return "Organization";
+    case "builtin":
+      return "Built-in";
     default:
       return namespace;
   }

@@ -16,12 +16,42 @@ RUN yarn install --immutable
 
 RUN yarn run web:build:prod
 
+# Assemble the full extension bundle — marketplace registry (with remote .foxe
+# mirrored offline and sha-verified), fleet-baked builtins, and builtin/index.json
+# — via the single source-of-truth script shared with .gitlab-ci.yml and the
+# GitHub Pages deploy. See extensions/build_extensions.sh for the output layout.
+RUN apt-get update && apt-get install -y --no-install-recommends jq \
+    && rm -rf /var/lib/apt/lists/*
+RUN bash /src/extensions/build_extensions.sh
+
 # Release stage
 FROM caddy:2.5.2-alpine
 WORKDIR /src
 COPY --from=build /src/web/.webpack ./
-COPY extensions/ extensions/
+
+# Extension bundle assembled by extensions/build_extensions.sh in the build
+# stage. Served under /extensions/ so the app resolves:
+#   /extensions/registry.json       marketplace catalog (ExtensionMarketplaceProvider)
+#   /extensions/<name>.foxe         marketplace blobs (mirrored offline)
+#   /extensions/builtin/index.json  fleet-baked builtins (BuiltinExtensionLoader)
+#   /extensions/builtin/<name>.foxe
+COPY --from=build /src/extensions/release/ /src/extensions/
+
 EXPOSE 8080
+
+COPY <<EOF /etc/caddy/Caddyfile
+:8080 {
+	root * /src
+	file_server
+	header {
+		Cross-Origin-Opener-Policy "same-origin"
+		Cross-Origin-Embedder-Policy "credentialless"
+		X-Frame-Options "DENY"
+		X-Content-Type-Options "nosniff"
+		Referrer-Policy "origin"
+	}
+}
+EOF
 
 COPY <<EOF /entrypoint.sh
 # Optionally override the default layout with one provided via bind mount
@@ -36,6 +66,5 @@ echo "\${index_html/"\$replace_pattern"/\$replace_value}" > index.html
 exec "\$@"
 EOF
 
-COPY extensions/registry.json /registry.json
 ENTRYPOINT ["/bin/sh", "/entrypoint.sh"]
-CMD ["caddy", "file-server", "--listen", ":8080"]
+CMD ["caddy", "run", "--config", "/etc/caddy/Caddyfile"]

@@ -36,7 +36,22 @@ To build the Desktop application, see CONTRIBUTING.md
 
 ## Extensions
 
-A number of extensions are available and installable directly in your browser or in the Desktop app. To view and manage these, go to Trillium->Settings->Extensions.
+A number of extensions are available. To view and manage these, go to Trillium->Settings->Extensions. The marketplace list there is served by the web and Docker deployments (from `extensions/registry.json`); each entry has an Install button. The Desktop app does not ship the marketplace registry — install extensions there by dragging a downloaded `.foxe` file into the app window, which works in the browser too.
+
+### JoyTeleop extension (.foxe)
+
+The JoyTeleop gamepad teleoperation panel is maintained in its own repository and included here as the [`extensions/erdc_joystick`](extensions/erdc_joystick) submodule. `extensions/build_extensions.sh` compiles it into `extensions/erdc_joystick.foxe` during the image/site build and serves it from the in-app marketplace (Settings->Extensions) with an Install button — no manual download on the Trillium web/Docker deployments.
+
+To install it into another app (Foxglove Studio, Lichtblick) or a Desktop build, download `extensions/erdc_joystick.foxe` from a deployment that serves it, then drag the `.foxe` into the app window (a snackbar confirms the install) and add the JoyTeleop panel to your layout.
+
+To build it yourself:
+
+```
+git submodule update --init extensions/erdc_joystick
+cd extensions/erdc_joystick
+npm ci
+npm run package   # writes the .foxe
+```
 
 ## History and related projects
 

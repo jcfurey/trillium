@@ -47,7 +47,7 @@ export function ExtensionDetails({ extension, onClose, installed }: Props): Reac
   const readmeUrl = extension.readme;
   const changelogUrl = extension.changelog;
   const canInstall = extension.foxe != undefined;
-  const canUninstall = extension.namespace !== "org";
+  const canUninstall = extension.namespace === "local" || extension.namespace == undefined;
 
   const { value: readmeContent } = useAsync(
     async () => (readmeUrl != undefined ? await marketplace.getMarkdown(readmeUrl) : ""),
