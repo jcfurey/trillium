@@ -258,9 +258,14 @@ export class CoordinateFrame<ID extends AnyFrameId = UserFrameId> {
     const lessThanIndex = greaterThanIndex - 1;
     if (lessThanIndex < 0) {
       // If the time is less than all existing transforms, return the first
-      // transform
+      // transform — but only if it's within maxDelta of the requested time. The earlier check
+      // form `earliestTime + maxDelta >= time` was trivially true here (we're in the branch
+      // where `time < earliestTime`), so the maxDelta gate effectively never rejected
+      // arbitrarily-old past lookups; we'd return whatever the earliest stored transform was
+      // even if it was hours away. Compare in the correct direction: time + maxDelta >= earliestTime
+      // (equivalently earliestTime - time <= maxDelta).
       const [earliestTime, earliestTf] = this.#transforms.minEntry()!;
-      if (earliestTime + maxDelta >= time) {
+      if (time + maxDelta >= earliestTime) {
         outLower[0] = outUpper[0] = earliestTime;
         outLower[1] = outUpper[1] = earliestTf;
         return true;

@@ -110,6 +110,9 @@ export class CameraStateSettings extends SceneExtension implements ICameraHandle
     this.renderer.settings.errors.off("clear", this.#handleErrorChange);
     this.renderer.settings.errors.off("remove", this.#handleErrorChange);
 
+    // Removes the DOM event listeners OrbitControls installed on the canvas
+    this.#controls.dispose();
+
     super.dispose();
   }
 

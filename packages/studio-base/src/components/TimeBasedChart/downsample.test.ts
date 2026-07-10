@@ -168,4 +168,36 @@ describe("downsampleScatter", () => {
     );
     expect(result).toEqual([0, 2]);
   });
+
+  it("does not merge distinct pixels that share a locator across rows", () => {
+    // (100, 10) maps to the last pixel of row 10 and (0, 11) to the first
+    // pixel of row 11; with a row stride of `width` these would collide.
+    const result = downsampleScatter(
+      iterateObjects([
+        { x: 100, y: 10, value: 10 },
+        { x: 0, y: 11, value: 11 },
+      ]),
+      bounds,
+    );
+    expect(result).toEqual([0, 1]);
+  });
+
+  it("merges points based on on-screen position when bounds do not start at zero", () => {
+    // Viewport over large x values (e.g. timestamps). Both points land on the
+    // same pixel and must be merged; distinct pixels must be kept.
+    const timeBounds = {
+      width: 100,
+      height: 100,
+      bounds: { x: { min: 1_700_000_000, max: 1_700_000_100 }, y: { min: 0, max: 100 } },
+    };
+    const result = downsampleScatter(
+      iterateObjects([
+        { x: 1_700_000_050, y: 50, value: 0 },
+        { x: 1_700_000_050.2, y: 50.2, value: 1 },
+        { x: 1_700_000_051, y: 50, value: 2 },
+      ]),
+      timeBounds,
+    );
+    expect(result).toEqual([0, 2]);
+  });
 });

@@ -321,7 +321,20 @@ export function Plot(props: Props): JSX.Element {
     canvas.height = clientRect.height;
     canvasDiv.appendChild(canvas);
 
-    const offscreenCanvas = canvas.transferControlToOffscreen();
+    // OffscreenCanvas / transferControlToOffscreen is required for the worker-driven render
+    // path. canRenderApp's preflight should have already gated unsupported browsers out at
+    // app load, but a layout import or programmatic mount could bypass that. Catch here so a
+    // missing API doesn't take down the host tab — surface it as a panel error instead.
+    let offscreenCanvas: OffscreenCanvas;
+    try {
+      offscreenCanvas = canvas.transferControlToOffscreen();
+    } catch (err) {
+      canvasDiv.removeChild(canvas);
+      throw new Error(
+        `Plot panel requires OffscreenCanvas support, which this browser does not provide ` +
+          `(transferControlToOffscreen threw: ${err instanceof Error ? err.message : String(err)})`,
+      );
+    }
     setRenderer(new OffscreenCanvasRenderer(offscreenCanvas, theme, { handleWorkerError }));
 
     return () => {

@@ -16,13 +16,21 @@ function supportsClassStaticInitialization() {
   }
 }
 
+// OffscreenCanvas / transferControlToOffscreen is required by the Plot panel
+// (panels/Plot/Plot.tsx calls canvas.transferControlToOffscreen() unconditionally with no
+// feature detection). Removing this gate without adding panel-side fallback only buys a half-
+// broken app on browsers that lack the API (Firefox <105, Safari <16.4) — they get past the
+// loader and then crash the moment a Plot panel mounts.
+const supportsOffscreenCanvas =
+  typeof HTMLCanvasElement !== "undefined" &&
+  typeof HTMLCanvasElement.prototype.transferControlToOffscreen === "function";
+
 /** Returns true if JS syntax and APIs required for rendering the rest of the app are supported. */
 export function canRenderApp(): boolean {
-  // Note: OffscreenCanvas is NOT required here. It is only used by the Plot panel
-  // which has its own runtime feature detection and graceful fallback.
   return (
     typeof BigInt64Array === "function" &&
     typeof BigUint64Array === "function" &&
-    supportsClassStaticInitialization()
+    supportsClassStaticInitialization() &&
+    supportsOffscreenCanvas
   );
 }
