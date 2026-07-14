@@ -4,7 +4,6 @@
   "devDependencies": {
     "@foxglove/den": "workspace:*",
     "@foxglove/log": "workspace:*",
-    "@foxglove/studio-base": "workspace:*",
     "@foxglove/studio-desktop": "workspace:*",
     "@foxglove/tsconfig": "2.0.0",
     "electron": "28.3.3",
