@@ -4,3 +4,6 @@
 [submodule "extensions/foxglove-3d-tiles"]
 	path = extensions/foxglove-3d-tiles
 	url = https://github.com/kubojion/foxglove-3d-tiles.git
+[submodule "extensions/erdc_joystick"]
+	path = extensions/erdc_joystick
+	url = https://public.git.erdc.dren.mil/erdc_robotics/tools/interfaces/trillium-extensions/erdc_joystick.git
