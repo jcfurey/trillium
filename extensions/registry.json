@@ -647,7 +647,7 @@
     "description": "Gamepad teleop with multi-pad JoystickList wire format, sticky buttons, and rumble feedback.",
     "publisher": "erdc-robotics",
     "license": "MPL-2.0",
-    "version": "1.0.0",
+    "version": "1.5.1",
     "foxe": "extensions/erdc_joystick.foxe",
     "keywords": [
       "foxglove",
